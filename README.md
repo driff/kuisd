@@ -89,3 +89,7 @@ dependencies {
 
 > El contrato expone `kotlinx-serialization` como `api`, así que el consumidor recibe
 > transitivamente `Json`/`KSerializer` para (de)serializar los `SduiEnvelope`.
+
+## Licencia
+
+[Apache License 2.0](LICENSE) © 2026 Johan Garcia.
