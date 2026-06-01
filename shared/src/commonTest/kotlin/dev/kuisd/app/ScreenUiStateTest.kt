@@ -1,4 +1,4 @@
-package dev.kuisd.sdui
+package dev.kuisd.app
 
 import dev.kuisd.sdui.core.SduiEnvelope
 import dev.kuisd.sdui.core.SduiNode
@@ -6,15 +6,15 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class SduiUiStateTest {
+class ScreenUiStateTest {
     @Test
     fun loading_is_singleton() {
-        assertTrue(SduiUiState.Loading === SduiUiState.Loading)
+        assertTrue(ScreenUiState.Loading === ScreenUiState.Loading)
     }
 
     @Test
     fun error_carries_message() {
-        val state = SduiUiState.Error("boom")
+        val state = ScreenUiState.Error("boom")
         assertEquals("boom", state.message)
     }
 
@@ -25,7 +25,7 @@ class SduiUiStateTest {
             screenId = "home",
             root = SduiNode(type = "column"),
         )
-        val state = SduiUiState.Content(envelope)
+        val state = ScreenUiState.Content(envelope)
         assertEquals("home", state.envelope.screenId)
     }
 }

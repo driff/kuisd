@@ -1,4 +1,4 @@
-package dev.kuisd.sdui
+package dev.kuisd.app
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -12,10 +12,14 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import dev.kuisd.app.data.KtorScreenSource
+import dev.kuisd.app.nav.NavActionHandler
+import dev.kuisd.app.nav.NavBackStack
+import dev.kuisd.sdui.LocalSduiActionHandler
 
 /**
- * Host de navegación SDUI: dueño del [NavBackStack] y de un único [SduiClient] compartido (HU-4.2).
- * Renderiza la pantalla del tope vía [SduiScreen] y ofrece una afordancia "atrás" cross-platform (HU-2.2).
+ * Host de navegación SDUI: dueño del [NavBackStack] y de un único `KtorScreenSource` compartido (HU-4.2).
+ * Renderiza la pantalla del tope vía [SduiScreen] y ofrece una afordancia "atrás" cross-platform.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -23,12 +27,12 @@ fun SduiHost(
     startRoute: String,
     modifier: Modifier = Modifier,
 ) {
-    val backStack = remember { NavBackStack(NavEntry(startRoute)) }
-    val dispatcher = remember { NavigationActionDispatcher(backStack) }
-    val client = remember { SduiClient() }
-    DisposableEffect(client) {
-        onDispose { client.close() }
+    val backStack = remember { NavBackStack(startRoute) }
+    val source = remember { KtorScreenSource() }
+    DisposableEffect(source) {
+        onDispose { source.close() }
     }
+    val handler = remember { NavActionHandler(backStack) }
 
     val current = backStack.current
     Scaffold(
@@ -44,11 +48,11 @@ fun SduiHost(
             }
         },
     ) { padding ->
-        CompositionLocalProvider(LocalActionDispatcher provides dispatcher) {
-            key(current.route) {
+        CompositionLocalProvider(LocalSduiActionHandler provides handler) {
+            key(current.id) {
                 SduiScreen(
                     screenId = current.route,
-                    client = client,
+                    source = source,
                     modifier = Modifier.padding(padding),
                 )
             }

@@ -15,9 +15,9 @@ fun RenderNode(node: SduiNode) {
         "row" -> Row { node.children.forEach { RenderNode(it) } }
         "text" -> Text(node.stringProp("text").orEmpty())
         "button" -> {
-            val dispatcher = LocalActionDispatcher.current
+            val handler = LocalSduiActionHandler.current
             Button(
-                onClick = { dispatcher.dispatch(node.actions["onClick"].orEmpty()) },
+                onClick = { handler.handle(node.actions["onClick"].orEmpty()) },
             ) {
                 Text(node.stringProp("label").orEmpty())
             }
