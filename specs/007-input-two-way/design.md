@@ -171,9 +171,16 @@ los displays parpadearían al valor inicial aunque el campo (state-based) manten
 ```kotlin
 // VariableStore.kt — cambia
 fun seed(initial: Map<String, JsonElement>) {
-    val merged = vars.toMutableMap()
-    initial.forEach { (k, v) -> merged.putIfAbsent(k, v) }
-    vars = merged.toMap()
+    val current = vars
+    var changed = false
+    val merged = current.toMutableMap()
+    initial.forEach { (k, v) ->
+        if (k !in current) {
+            merged[k] = v
+            changed = true
+        }
+    }
+    if (changed) vars = merged.toMap()
 }
 ```
 - Primera siembra (mapa vacío): equivalente al comportamiento anterior — todas las claves entran.

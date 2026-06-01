@@ -31,6 +31,17 @@ class VariableStoreTest {
     }
 
     @Test
+    fun seed_adds_new_keys_to_non_empty_store() {
+        // Una variable ya existe; el envelope re-emite con esa + una nueva: la nueva entra,
+        // la existente se preserva. Cubre el camino "claves añadidas en re-seed".
+        val store = VariableStore()
+        store.set("a", JsonPrimitive(1))
+        store.seed(mapOf("a" to JsonPrimitive(99), "b" to JsonPrimitive(2)))
+        assertEquals(JsonPrimitive(1), store.vars["a"])
+        assertEquals(JsonPrimitive(2), store.vars["b"])
+    }
+
+    @Test
     fun re_seed_with_typed_user_edit_does_not_overwrite() {
         // Simula: envelope sembró count=0, usuario tecleó "7" (SetVar -> "7"), envelope se
         // re-emite (LaunchedEffect dispara seed otra vez) -> el "7" del usuario se preserva.
