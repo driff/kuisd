@@ -8,7 +8,9 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import dev.kuisd.sdui.core.SetVar
@@ -50,7 +52,6 @@ data class TextFieldProps(
 )
 
 /** Catálogo base del motor: column/row/text/button/textField con sus props tipadas. */
-@OptIn(ExperimentalMaterial3Api::class)
 val CorePack: ComponentRegistry = componentRegistry {
     register(sduiComponent<ColumnProps>("column")) { Column { renderChildren() } }
     register(sduiComponent<RowProps>("row")) { Row { renderChildren() } }
@@ -59,28 +60,47 @@ val CorePack: ComponentRegistry = componentRegistry {
         val handler = LocalSduiActionHandler.current
         Button(onClick = { handler.handle(node.actions["onClick"].orEmpty()) }) { Text(bind(p.label)) }
     }
-    register(sduiComponent<TextFieldProps>("textField")) { p ->
-        val handler = LocalSduiActionHandler.current
-        val vars = LocalVariables.current
-        // Semilla puntual: lectura única en la 1ª composición (estado del campo es local-source-of-truth).
-        val initial = vars.get(p.bind)?.asDisplayString().orEmpty()
-        val state = rememberTextFieldState(initial)
+    register(sduiComponent<TextFieldProps>("textField")) { p -> TextFieldRenderer(p) }
+}
 
-        if (p.bind.isNotEmpty()) {
-            LaunchedEffect(state, p.bind) {
-                snapshotFlow { state.text.toString() }
-                    .drop(1)
-                    .collect { newText ->
-                        handler.handle(listOf(SetVar(p.bind, JsonPrimitive(newText))))
-                    }
-            }
+/**
+ * Renderer del `textField`. Acota el `@OptIn(ExperimentalMaterial3Api::class)` a esta función para
+ * no contaminar todo `CorePack`.
+ *
+ * Semilla puntual: `vars.get(p.bind)?.asDisplayString()` se calcula UNA SOLA VEZ por `p.bind` y por
+ * slot de composición vía `remember(p.bind)` — documenta la semántica "lectura única" del docs
+ * state-based y evita ejecutar la coerción en cada recomposición.
+ *
+ * Nota sobre la key del `remember`: deliberadamente NO incluye `LocalVariables.current` como
+ * dependencia. Si el `VariableScope` provisto por el `CompositionLocal` cambia en runtime (caso
+ * típico: tests/previews que rotan `LocalVariables`), la semilla recordada queda fija al primer
+ * valor — es la semántica state-based correcta: el `TextFieldState` es local-source-of-truth tras
+ * la 1ª composición y no debe re-sembrarse por mutaciones externas. `remember(p.bind, vars)` sería
+ * un bug (re-sembraría a cada `SetVar` emitido); sin key sería un bug si `p.bind` cambia en el
+ * mismo slot. La key `p.bind` es la elección correcta.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RenderScope.TextFieldRenderer(p: TextFieldProps) {
+    val handler = LocalSduiActionHandler.current
+    val vars = LocalVariables.current
+    val initial = remember(p.bind) { vars.get(p.bind)?.asDisplayString().orEmpty() }
+    val state = rememberTextFieldState(initial)
+
+    if (p.bind.isNotEmpty()) {
+        LaunchedEffect(state, p.bind) {
+            snapshotFlow { state.text.toString() }
+                .drop(1)
+                .collect { newText ->
+                    handler.handle(listOf(SetVar(p.bind, JsonPrimitive(newText))))
+                }
         }
-
-        OutlinedTextField(
-            state = state,
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text(p.placeholder) },
-            label = p.label?.let { { Text(bind(it)) } },
-        )
     }
+
+    OutlinedTextField(
+        state = state,
+        modifier = Modifier.fillMaxWidth(),
+        placeholder = { Text(p.placeholder) },
+        label = p.label?.let { { Text(bind(it)) } },
+    )
 }
