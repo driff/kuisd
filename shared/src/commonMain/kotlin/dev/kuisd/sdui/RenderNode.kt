@@ -14,16 +14,14 @@ fun RenderNode(node: SduiNode) {
         "column" -> Column { node.children.forEach { RenderNode(it) } }
         "row" -> Row { node.children.forEach { RenderNode(it) } }
         "text" -> Text(node.stringProp("text").orEmpty())
-        "button" ->
+        "button" -> {
+            val dispatcher = LocalActionDispatcher.current
             Button(
-                onClick = {
-                    // HU-2.3: se reconoce la accion onClick sin ejecutar navegacion ni red en este slice.
-                    val onClick = node.actions["onClick"].orEmpty()
-                    sduiLog("button onClick -> $onClick")
-                },
+                onClick = { dispatcher.dispatch(node.actions["onClick"].orEmpty()) },
             ) {
                 Text(node.stringProp("label").orEmpty())
             }
+        }
 
         else -> UnknownNode(node.type)
     }
