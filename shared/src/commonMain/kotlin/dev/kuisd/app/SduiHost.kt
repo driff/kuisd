@@ -12,9 +12,11 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import dev.kuisd.app.components.appRegistry
 import dev.kuisd.app.data.KtorScreenSource
 import dev.kuisd.app.nav.NavActionHandler
 import dev.kuisd.app.nav.NavBackStack
+import dev.kuisd.sdui.LocalComponentRegistry
 import dev.kuisd.sdui.LocalSduiActionHandler
 
 /**
@@ -48,7 +50,10 @@ fun SduiHost(
             }
         },
     ) { padding ->
-        CompositionLocalProvider(LocalSduiActionHandler provides handler) {
+        CompositionLocalProvider(
+            LocalSduiActionHandler provides handler,
+            LocalComponentRegistry provides appRegistry,
+        ) {
             key(current.id) {
                 SduiScreen(
                     screenId = current.route,

@@ -46,6 +46,19 @@ class ApplicationTest {
     }
 
     @Test
+    fun screen_details_contains_a_badge_node() = testApplication {
+        application { module() }
+        val response = client.get("/screen/details")
+        assertEquals(HttpStatusCode.OK, response.status)
+
+        val envelope = DefaultSduiJson.decodeFromString(SduiEnvelope.serializer(), response.bodyAsText())
+        assertTrue(
+            envelope.root.children.any { it.type == "badge" },
+            "esperaba un nodo type==badge en details",
+        )
+    }
+
+    @Test
     fun screen_more_serves_a_valid_sdui_envelope() = testApplication {
         application { module() }
         val response = client.get("/screen/more")
