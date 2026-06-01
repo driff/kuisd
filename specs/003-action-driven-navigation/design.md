@@ -1,6 +1,6 @@
 # Diseño — Navegación por acciones + frontera Clean Architecture (motor puro / app)
 
-> Spec ID: 003 · Estado: draft · Trazabilidad: ./requirements.md
+> Spec ID: 003 · Estado: approved · Trazabilidad: ./requirements.md
 
 ## Enfoque
 Separar el código de `:shared` en **capas** (paquetes) con regla de dependencias estricta, e implementar
@@ -78,7 +78,9 @@ val LocalSduiActionHandler: ProvidableCompositionLocal<SduiActionHandler> =
 ```kotlin
 // dev.kuisd.app.data  (public)
 fun interface ScreenSource {
-    suspend fun load(screenId: String, args: Map<String, String> = emptyMap()): SduiEnvelope
+    // Nota de impl: un `fun interface` (SAM) de Kotlin no admite valores por defecto en su método
+    // abstracto, así que `args` no lleva `= emptyMap()`; el default se pasa explícito en el call site.
+    suspend fun load(screenId: String, args: Map<String, String>): SduiEnvelope
 }
 
 // internal — la impl Ktor; SduiClient/SduiHttp quedan como detalle privado

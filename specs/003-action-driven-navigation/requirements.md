@@ -1,6 +1,6 @@
 # Requisitos — Navegación por acciones + frontera Clean Architecture (motor puro / app)
 
-> Spec ID: 003 · Estado: draft · Fecha: 2026-05-31
+> Spec ID: 003 · Estado: approved · Fecha: 2026-05-31
 > Revisión: reescrita tras la corrección de arquitectura (motor SDUI "puro") y la auditoría Clean
 > Architecture + SOLID del código KMP de cliente.
 
