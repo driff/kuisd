@@ -1,4 +1,4 @@
-package dev.kuisd.sdui
+package dev.kuisd.app.data
 
 import dev.kuisd.sdui.core.DefaultSduiJson
 import dev.kuisd.sdui.core.SduiEnvelope
@@ -7,7 +7,7 @@ import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 
 /** Cliente SDUI: recupera el [SduiEnvelope] de una pantalla del BFF (HU-1). */
-class SduiClient(
+internal class SduiClient(
     private val baseUrl: String = defaultBaseUrl,
     private val http: HttpClient = sduiHttpClient(),
 ) {

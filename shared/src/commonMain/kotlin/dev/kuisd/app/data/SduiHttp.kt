@@ -1,14 +1,14 @@
-package dev.kuisd.sdui
+package dev.kuisd.app.data
 
 import io.ktor.client.HttpClient
 import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.HttpTimeout
 
 /** Crea el [HttpClient] con el engine de Ktor propio de cada plataforma (HU-4.1). */
-expect fun sduiHttpClient(): HttpClient
+internal expect fun sduiHttpClient(): HttpClient
 
 /** baseUrl por defecto del `:server` segun la plataforma (HU-4.2). */
-expect val defaultBaseUrl: String
+internal expect val defaultBaseUrl: String
 
 /** Config compartida: timeouts (R9) para que un servidor lento/caido no cuelgue la UI (HU-1.3). */
 internal fun HttpClientConfig<*>.sduiConfig() {
