@@ -3,6 +3,7 @@ package dev.kuisd.app.variables
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertSame
 
 class VariableStoreTest {
     @Test
@@ -31,14 +32,37 @@ class VariableStoreTest {
     }
 
     @Test
-    fun seed_adds_new_keys_to_non_empty_store() {
-        // Una variable ya existe; el envelope re-emite con esa + una nueva: la nueva entra,
-        // la existente se preserva. Cubre el camino "claves añadidas en re-seed".
+    fun seed_preserves_multiple_existing_and_adds_multiple_new_keys() {
+        // Varias claves preexistentes + varias nuevas en el mismo seed: todas las preexistentes
+        // se preservan, todas las nuevas se añaden. Asegura que el merge no falla con n>1.
         val store = VariableStore()
         store.set("a", JsonPrimitive(1))
-        store.seed(mapOf("a" to JsonPrimitive(99), "b" to JsonPrimitive(2)))
+        store.set("b", JsonPrimitive(2))
+        store.seed(
+            mapOf(
+                "a" to JsonPrimitive(99),
+                "b" to JsonPrimitive(88),
+                "c" to JsonPrimitive(3),
+                "d" to JsonPrimitive(4),
+            ),
+        )
         assertEquals(JsonPrimitive(1), store.vars["a"])
         assertEquals(JsonPrimitive(2), store.vars["b"])
+        assertEquals(JsonPrimitive(3), store.vars["c"])
+        assertEquals(JsonPrimitive(4), store.vars["d"])
+    }
+
+    @Test
+    fun seed_with_no_new_keys_does_not_reassign_vars() {
+        // Cubre el camino `if (changed) vars = merged.toMap()` del seed: cuando el envelope
+        // re-emite solo claves ya presentes, `vars` debe quedar como referencia idéntica (sin
+        // recomposiciones espurias en Compose).
+        val store = VariableStore()
+        store.set("a", JsonPrimitive(1))
+        store.set("b", JsonPrimitive(2))
+        val before = store.vars
+        store.seed(mapOf("a" to JsonPrimitive(99), "b" to JsonPrimitive(88)))
+        assertSame(before, store.vars, "seed sin claves nuevas no debería reasignar vars")
     }
 
     @Test

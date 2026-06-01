@@ -67,9 +67,17 @@ val CorePack: ComponentRegistry = componentRegistry {
  * Renderer del `textField`. Acota el `@OptIn(ExperimentalMaterial3Api::class)` a esta función para
  * no contaminar todo `CorePack`.
  *
- * Semilla puntual: `vars.get(p.bind)?.asDisplayString()` se calcula UNA SOLA VEZ por `p.bind` vía
- * `remember(p.bind)` — documenta la semántica "lectura única" del docs state-based y evita ejecutar
- * la coerción en cada recomposición.
+ * Semilla puntual: `vars.get(p.bind)?.asDisplayString()` se calcula UNA SOLA VEZ por `p.bind` y por
+ * slot de composición vía `remember(p.bind)` — documenta la semántica "lectura única" del docs
+ * state-based y evita ejecutar la coerción en cada recomposición.
+ *
+ * Nota sobre la key del `remember`: deliberadamente NO incluye `LocalVariables.current` como
+ * dependencia. Si el `VariableScope` provisto por el `CompositionLocal` cambia en runtime (caso
+ * típico: tests/previews que rotan `LocalVariables`), la semilla recordada queda fija al primer
+ * valor — es la semántica state-based correcta: el `TextFieldState` es local-source-of-truth tras
+ * la 1ª composición y no debe re-sembrarse por mutaciones externas. `remember(p.bind, vars)` sería
+ * un bug (re-sembraría a cada `SetVar` emitido); sin key sería un bug si `p.bind` cambia en el
+ * mismo slot. La key `p.bind` es la elección correcta.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
