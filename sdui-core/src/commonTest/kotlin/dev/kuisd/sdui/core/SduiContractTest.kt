@@ -29,6 +29,15 @@ class SduiContractTest {
     }
 
     @Test
+    fun navigate_back_round_trips_through_json() {
+        val encoded = DefaultSduiJson.encodeToString(UiAction.serializer(), NavigateBack)
+        assertEquals("""{"type":"navigateBack"}""", encoded)
+
+        val decoded = DefaultSduiJson.decodeFromString(UiAction.serializer(), encoded)
+        assertTrue(decoded is NavigateBack)
+    }
+
+    @Test
     fun problem_detail_round_trips_through_json() {
         val original = ProblemDetail(title = "Screen not found", status = 404, instance = "abc-123")
         val encoded = DefaultSduiJson.encodeToString(ProblemDetail.serializer(), original)

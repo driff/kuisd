@@ -7,10 +7,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -43,13 +41,10 @@ sealed interface SduiUiState {
 @Composable
 fun SduiScreen(
     screenId: String,
-    client: SduiClient = remember { SduiClient() },
+    client: SduiClient,
+    modifier: Modifier = Modifier,
 ) {
-    // SduiScreen es dueño del ciclo de vida del cliente por defecto: cierra el HttpClient al salir.
-    DisposableEffect(client) {
-        onDispose { client.close() }
-    }
-
+    // El ciclo de vida del cliente lo posee el SduiHost (HU-4.2); SduiScreen ya no lo cierra.
     val state by produceState<SduiUiState>(SduiUiState.Loading, screenId, client) {
         value = try {
             SduiUiState.Content(client.fetchScreen(screenId))
@@ -62,12 +57,12 @@ fun SduiScreen(
 
     when (val current = state) {
         SduiUiState.Loading ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator()
             }
 
         is SduiUiState.Error ->
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(
                     text = "Error: ${current.message}",
                     modifier = Modifier.padding(16.dp),
@@ -76,7 +71,9 @@ fun SduiScreen(
             }
 
         is SduiUiState.Content ->
-            RenderNode(current.envelope.root)
+            Box(modifier = modifier) {
+                RenderNode(current.envelope.root)
+            }
     }
 }
 

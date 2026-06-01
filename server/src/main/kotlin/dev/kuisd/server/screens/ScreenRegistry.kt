@@ -22,5 +22,7 @@ fun defaultScreenRegistry(): ScreenRegistry =
     ScreenRegistry(
         mapOf(
             "home" to HomeScreen,
+            "details" to DetailsScreen,
+            "more" to MoreScreen,
         ),
     )
