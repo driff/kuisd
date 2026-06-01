@@ -36,6 +36,26 @@ class ApplicationTest {
     }
 
     @Test
+    fun screen_details_serves_a_valid_sdui_envelope() = testApplication {
+        application { module() }
+        val response = client.get("/screen/details")
+        assertEquals(HttpStatusCode.OK, response.status)
+
+        val envelope = DefaultSduiJson.decodeFromString(SduiEnvelope.serializer(), response.bodyAsText())
+        assertEquals("details", envelope.screenId)
+    }
+
+    @Test
+    fun screen_more_serves_a_valid_sdui_envelope() = testApplication {
+        application { module() }
+        val response = client.get("/screen/more")
+        assertEquals(HttpStatusCode.OK, response.status)
+
+        val envelope = DefaultSduiJson.decodeFromString(SduiEnvelope.serializer(), response.bodyAsText())
+        assertEquals("more", envelope.screenId)
+    }
+
+    @Test
     fun unknown_screen_returns_problem_detail_404() = testApplication {
         application { module() }
         val response = client.get("/screen/does-not-exist")
