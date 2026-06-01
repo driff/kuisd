@@ -28,9 +28,9 @@ data class ButtonProps(
 val CorePack: ComponentRegistry = componentRegistry {
     register(sduiComponent<ColumnProps>("column")) { Column { renderChildren() } }
     register(sduiComponent<RowProps>("row")) { Row { renderChildren() } }
-    register(sduiComponent<TextProps>("text")) { p -> Text(p.text) }
+    register(sduiComponent<TextProps>("text")) { p -> Text(bind(p.text)) }
     register(sduiComponent<ButtonProps>("button")) { p ->
         val handler = LocalSduiActionHandler.current
-        Button(onClick = { handler.handle(node.actions["onClick"].orEmpty()) }) { Text(p.label) }
+        Button(onClick = { handler.handle(node.actions["onClick"].orEmpty()) }) { Text(bind(p.label)) }
     }
 }

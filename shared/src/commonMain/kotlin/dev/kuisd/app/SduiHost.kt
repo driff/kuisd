@@ -16,12 +16,17 @@ import dev.kuisd.app.components.appRegistry
 import dev.kuisd.app.data.KtorScreenSource
 import dev.kuisd.app.nav.NavActionHandler
 import dev.kuisd.app.nav.NavBackStack
+import dev.kuisd.app.variables.VariableActionHandler
+import dev.kuisd.app.variables.VariableStore
 import dev.kuisd.sdui.LocalComponentRegistry
 import dev.kuisd.sdui.LocalSduiActionHandler
+import dev.kuisd.sdui.LocalVariables
 
 /**
  * Host de navegación SDUI: dueño del [NavBackStack] y de un único `KtorScreenSource` compartido (HU-4.2).
- * Renderiza la pantalla del tope vía [SduiScreen] y ofrece una afordancia "atrás" cross-platform.
+ * Crea un [VariableStore] por entrada del back stack (`remember(current.id)`) y compone navegación +
+ * variables en un único [AppActionHandler] sin doble log (spec 005). Renderiza la pantalla del tope vía
+ * [SduiScreen] y ofrece una afordancia "atrás" cross-platform.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,9 +39,18 @@ fun SduiHost(
     DisposableEffect(source) {
         onDispose { source.close() }
     }
-    val handler = remember { NavActionHandler(backStack) }
 
     val current = backStack.current
+    val store = remember(current.id) { VariableStore() }
+    val handler = remember(current.id, backStack) {
+        AppActionHandler(
+            listOf(
+                NavActionHandler(backStack),
+                VariableActionHandler(store),
+            ),
+        )
+    }
+
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -53,11 +67,13 @@ fun SduiHost(
         CompositionLocalProvider(
             LocalSduiActionHandler provides handler,
             LocalComponentRegistry provides appRegistry,
+            LocalVariables provides store.scope,
         ) {
             key(current.id) {
                 SduiScreen(
                     screenId = current.route,
                     source = source,
+                    store = store,
                     modifier = Modifier.padding(padding),
                 )
             }
