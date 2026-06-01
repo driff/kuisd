@@ -19,7 +19,7 @@ fun RenderNode(node: SduiNode) {
                 onClick = {
                     // HU-2.3: se reconoce la accion onClick sin ejecutar navegacion ni red en este slice.
                     val onClick = node.actions["onClick"].orEmpty()
-                    println("SduiButton onClick: $onClick")
+                    sduiLog("button onClick -> $onClick")
                 },
             ) {
                 Text(node.stringProp("label").orEmpty())
@@ -32,5 +32,5 @@ fun RenderNode(node: SduiNode) {
 /** Marcador de reemplazo para tipos de nodo desconocidos: resiliencia / forward-compat (HU-2.4). */
 @Composable
 private fun UnknownNode(type: String) {
-    Text("⚠︎ componente no soportado: $type")
+    Text("Componente no soportado: $type")
 }

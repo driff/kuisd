@@ -15,4 +15,9 @@ class SduiClient(
         val body = http.get("$baseUrl/screen/$screenId").bodyAsText()
         return DefaultSduiJson.decodeFromString(SduiEnvelope.serializer(), body)
     }
+
+    /** Libera el engine HTTP. Llamar cuando el cliente (y su `HttpClient`) deje de usarse. */
+    fun close() {
+        http.close()
+    }
 }
