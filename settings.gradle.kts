@@ -46,6 +46,7 @@ plugins {
 }
 
 include(":sdui-core")
+include(":sdui-compose")
 include(":shared")
 include(":androidApp")
 include(":desktopApp")

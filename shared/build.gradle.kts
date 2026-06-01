@@ -30,11 +30,13 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
+            // El motor (trae :sdui-core + Compose runtime/foundation/material3/ui transitivos
+            // por `api`). `implementation`: las apps host (:androidApp/:desktopApp) consumen
+            // :shared para arrancar la app, no para escribir componentes SDUI.
+            implementation(project(":sdui-compose"))
+            // La app usa tipos de core directamente (SduiEnvelope, UiAction, Navigate…):
+            // dependencia directa = declarada explícitamente, aunque llegue transitiva.
             implementation(project(":sdui-core"))
-            implementation(libs.runtime)
-            implementation(libs.foundation)
-            implementation(libs.material3)
-            implementation(libs.ui)
             implementation(libs.ktor.client.core)
             implementation(libs.kotlinx.coroutines.core)
         }

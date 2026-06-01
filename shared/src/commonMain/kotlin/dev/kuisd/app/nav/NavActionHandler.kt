@@ -1,10 +1,10 @@
 package dev.kuisd.app.nav
 
+import dev.kuisd.app.appLog
 import dev.kuisd.sdui.SduiActionHandler
 import dev.kuisd.sdui.core.Navigate
 import dev.kuisd.sdui.core.NavigateBack
 import dev.kuisd.sdui.core.UiAction
-import dev.kuisd.sdui.sduiLog
 
 /**
  * Handler de navegación: `Navigate` apila, `NavigateBack` desapila; el resto de acciones
@@ -17,7 +17,7 @@ internal class NavActionHandler(
         when (action) {
             is Navigate -> backStack.push(action.route, action.args)
             NavigateBack -> backStack.pop()
-            else -> sduiLog("acción no soportada en spec 003 (no-op): ${action::class.simpleName}")
+            else -> appLog("acción no soportada en spec 003 (no-op): ${action::class.simpleName}")
         }
     }
 }
