@@ -20,7 +20,9 @@ class RegisteredComponent<P : Any>(
     @Composable
     fun Render(node: SduiNode) {
         val props = remember(node) {
-            runCatching { DefaultSduiJson.decodeFromJsonElement(component.serializer, node.props) }.getOrNull()
+            runCatching { DefaultSduiJson.decodeFromJsonElement(component.serializer, node.props) }
+                .onFailure { sduiLog("props inválidas para type='${node.type}', se degrada a UnknownNode: ${it.message}") }
+                .getOrNull()
         }
         if (props == null) {
             UnknownNode(node.type)

@@ -4,7 +4,7 @@ import dev.kuisd.sdui.core.sduiComponent
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class BadgeProps(
+internal data class BadgeProps(
     val text: String = "",
 )
 
