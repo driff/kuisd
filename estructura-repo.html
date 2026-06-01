@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>kuisd · estructura del repositorio</title>
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --panel2: #1c2230; --border: #30363d;
+    --fg: #e6edf3; --muted: #9da7b3; --accent: #58a6ff; --green: #3fb950;
+    --amber: #d29922; --purple: #bc8cff; --pink: #f778ba; --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.55; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 32px 20px 80px; }
+  header.hero { border-bottom: 1px solid var(--border); padding-bottom: 24px; margin-bottom: 28px; }
+  h1 { font-size: 2.1rem; margin: 0 0 6px; letter-spacing: -.5px; }
+  h1 .tag { color: var(--muted); font-weight: 400; font-size: 1rem; }
+  .sub { color: var(--muted); margin: 0; }
+  .badges { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .badge { font-size: .78rem; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--panel); color: var(--muted); }
+  .badge.ok { color: var(--green); border-color: #2ea04340; }
+  .badge.draft { color: var(--amber); border-color: #d2992240; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  h2 { font-size: 1.35rem; margin: 38px 0 14px; padding-top: 10px; border-top: 1px solid var(--border); }
+  h2 .n { color: var(--muted); font-family: var(--mono); font-size: .9rem; margin-right: 8px; }
+  p { color: #c9d3de; }
+  code { font-family: var(--mono); font-size: .86em; background: #2630426b; padding: 1px 6px; border-radius: 5px; color: #cfe1ff; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .card h3 { margin: 0 0 4px; font-size: 1.02rem; font-family: var(--mono); }
+  .card .role { color: var(--muted); font-size: .85rem; margin: 0 0 10px; }
+  .card .meta { font-size: .8rem; color: var(--muted); }
+  .pill { display: inline-block; font-size: .72rem; font-family: var(--mono); padding: 2px 7px; border-radius: 6px;
+    border: 1px solid var(--border); margin: 2px 4px 2px 0; color: var(--muted); background: var(--panel2); }
+  .pill.kmp { color: var(--purple); } .pill.jvm { color: var(--pink); } .pill.app { color: var(--accent); }
+  pre.tree { background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px;
+    overflow-x: auto; font-family: var(--mono); font-size: .82rem; line-height: 1.5; color: #c9d3de; }
+  pre.tree .d { color: var(--accent); } pre.tree .c { color: var(--muted); font-style: italic; }
+  pre.tree .new { color: var(--green); } pre.tree .star { color: var(--amber); }
+  table { width: 100%; border-collapse: collapse; font-size: .88rem; margin: 6px 0; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+  td code { white-space: nowrap; }
+  .legend { font-size: .8rem; color: var(--muted); margin-top: 8px; }
+  .legend .new { color: var(--green); } .legend .star { color: var(--amber); }
+  .endpoint { font-family: var(--mono); font-size: .85rem; }
+  .method { color: var(--green); font-weight: 700; }
+  footer { margin-top: 50px; padding-top: 18px; border-top: 1px solid var(--border); color: var(--muted); font-size: .82rem; }
+  .two { display: grid; gap: 22px; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 720px) { .two { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="hero">
+    <h1>kuisd <span class="tag">· estructura del repositorio</span></h1>
+    <p class="sub">Server-Driven UI (SDUI) sobre Kotlin Multiplatform + Ktor BFF.</p>
+    <div class="badges">
+      <span class="badge"><a href="https://github.com/driff/kuisd">github.com/driff/kuisd</a></span>
+      <span class="badge ok">Apache-2.0</span>
+      <span class="badge">Kotlin 2.3.21</span>
+      <span class="badge">Gradle 9.4.1</span>
+      <span class="badge">AGP 9.1.1</span>
+      <span class="badge">Compose MP 1.11.0</span>
+      <span class="badge">Ktor 3.5.0</span>
+      <span class="badge">JVM toolchain 25</span>
+    </div>
+    <p class="sub" style="margin-top:14px; font-size:.85rem;">
+      Generado el 2026-05-31 · refleja los archivos versionados (git). Arrancado del blueprint
+      <code>full_app</code> (read-only); todo el trabajo vive en <code>kuisd</code>.
+    </p>
+  </header>
+
+  <h2><span class="n">01</span>Visión general</h2>
+  <p>
+    Monorepo Gradle con <strong>6 módulos</strong>: un contrato compartido publicable
+    (<code>:sdui-core</code>), un BFF Ktor (<code>:server</code>) y cuatro objetivos de cliente
+    Compose Multiplatform (<code>:shared</code> + <code>:androidApp</code> + <code>:desktopApp</code> +
+    <code>iosApp</code>). El servidor describe la UI como un árbol JSON tipado; el cliente lo
+    renderiza. El contrato único en <code>commonMain</code> da type-safety end-to-end sin codegen.
+  </p>
+
+  <h2><span class="n">02</span>Mapa de módulos</h2>
+  <div class="grid">
+    <div class="card">
+      <h3>:sdui-core</h3>
+      <p class="role">Contrato <code>@Serializable</code> del árbol SDUI — la fuente de verdad.</p>
+      <span class="pill kmp">KMP lib</span><span class="pill">android</span><span class="pill">jvm</span><span class="pill">iosArm64</span><span class="pill">iosSimulatorArm64</span>
+      <p class="meta">Publicable a Maven: <code>dev.kuisd:sdui-core</code>. Lo consumen server y cliente.</p>
+    </div>
+    <div class="card">
+      <h3>:server</h3>
+      <p class="role">BFF Ktor sobre Netty: ensambla y sirve los árboles SDUI.</p>
+      <span class="pill jvm">JVM app</span><span class="pill">Ktor 3.5</span><span class="pill">Netty</span>
+      <p class="meta">Estructura <code>plugins/</code> · <code>routing/</code> · <code>screens/</code> con <code>ScreenRegistry</code>.</p>
+    </div>
+    <div class="card">
+      <h3>:shared</h3>
+      <p class="role">Código de cliente compartido (Compose Multiplatform).</p>
+      <span class="pill kmp">KMP lib</span><span class="pill">android</span><span class="pill">jvm(desktop)</span><span class="pill">ios</span>
+      <p class="meta">Depende de <code>:sdui-core</code>. Framework iOS <code>shared</code> (static).</p>
+    </div>
+    <div class="card">
+      <h3>:androidApp</h3>
+      <p class="role">Entrypoint Android.</p>
+      <span class="pill app">Android app</span>
+      <p class="meta"><code>dev.kuisd.android</code> · appId <code>dev.kuisd.app</code> · minSdk 26 / compileSdk 36.</p>
+    </div>
+    <div class="card">
+      <h3>:desktopApp</h3>
+      <p class="role">Entrypoint Compose Desktop (JVM).</p>
+      <span class="pill app">JVM app</span>
+      <p class="meta"><code>dev.kuisd.desktop.MainKt</code>.</p>
+    </div>
+    <div class="card">
+      <h3>iosApp</h3>
+      <p class="role">Entrypoint iOS (XcodeGen).</p>
+      <span class="pill app">Xcode</span>
+      <p class="meta"><code>project.yml</code> = fuente de verdad; consume el framework <code>shared</code>.</p>
+    </div>
+  </div>
+
+  <h2><span class="n">03</span>Árbol de archivos</h2>
+  <pre class="tree">
+kuisd/
+├── <span class="d">gradle/</span>
+│   ├── <span class="d">wrapper/</span> gradle-wrapper.jar · gradle-wrapper.properties   <span class="c"># Gradle 9.4.1</span>
+│   └── libs.versions.toml                <span class="c"># version catalog</span>
+├── settings.gradle.kts · build.gradle.kts · gradle.properties
+├── gradlew · gradlew.bat · .editorconfig · .gitignore
+├── <span class="new">LICENSE</span> · README.md
+├── <span class="d">config/</span>detekt/detekt.yml
+│
+├── <span class="d">sdui-core/</span>                          <span class="c"># ★ contrato (publicable)</span>
+│   ├── build.gradle.kts
+│   └── src/<span class="d">commonMain/</span>kotlin/dev/kuisd/sdui/core/
+│       ├── SduiNode.kt · SduiEnvelope.kt · SduiPatch.kt
+│       ├── UiAction.kt · UiModifier.kt · DesignTokens.kt
+│       ├── SduiComponent.kt · SduiJson.kt
+│       ├── <span class="new">ProblemDetail.kt</span>            <span class="c"># RFC 7807 (spec 002)</span>
+│       └── <span class="new">Protocol.kt</span>                 <span class="c"># X-Kuisd-Version (spec 002)</span>
+│   └── src/<span class="d">commonTest/</span>…/SduiContractTest.kt
+│
+├── <span class="d">server/</span>                             <span class="c"># ★ Ktor BFF (Netty)</span>
+│   ├── build.gradle.kts
+│   └── src/main/kotlin/dev/kuisd/server/
+│       ├── Application.kt                <span class="c"># bootstrap + wiring</span>
+│       ├── <span class="d">plugins/</span> Serialization · Monitoring · Http · ErrorHandling
+│       ├── <span class="d">routing/</span> HealthRoutes · ScreenRoutes
+│       └── <span class="d">screens/</span> ScreenRegistry · ScreenContext · HomeScreen
+│   ├── src/main/resources/logback.xml
+│   └── src/test/…/ApplicationTest.kt
+│
+├── <span class="d">shared/</span>  build.gradle.kts
+│   ├── src/commonMain/…/Placeholder.kt · presentation/PlaceholderApp.kt
+│   └── src/iosMain/…/MainViewController.kt
+├── <span class="d">androidApp/</span> build.gradle.kts · AndroidManifest.xml · MainActivity.kt · themes.xml
+├── <span class="d">desktopApp/</span> build.gradle.kts · Main.kt
+├── <span class="d">iosApp/</span> project.yml · iosApp/{iOSApp.swift, ContentView.swift, Info.plist}
+│
+├── <span class="d">specs/</span>                              <span class="c"># spec-driven development</span>
+│   ├── README.md · <span class="d">templates/</span> requirements · design · tasks
+│   ├── <span class="d">001-sdui-vertical-slice/</span>   <span class="star">(draft)</span>
+│   └── <span class="d">002-server-foundation/</span>     <span class="new">(approved · implementado)</span>
+│
+└── <span class="d">docs de arquitectura (.md / .html)</span>
+    fundamentos-sdui-ktor-kmp · sdui-librerias-compose-ktor
+    sdui-componentes-y-actualizacion · sdui-theming
+    kuisd-plan-implementacion · sdui-diagrama.html
+  </pre>
+  <p class="legend">
+    <span class="new">verde</span> = añadido en la spec 002 (endurecimiento del servidor) ·
+    <span class="star">ámbar</span> = pendiente. No versionado: <code>.claude/</code> (incluye el comando <code>/spec</code>),
+    <code>local.properties</code>, <code>build/</code>.
+  </p>
+
+  <div class="two">
+    <div>
+      <h2><span class="n">04</span>Contrato · :sdui-core</h2>
+      <table>
+        <tr><th>Tipo</th><th>Rol</th></tr>
+        <tr><td><code>SduiEnvelope</code></td><td>Pantalla: schemaVersion, screenId, root, variables.</td></tr>
+        <tr><td><code>SduiNode</code></td><td>Nodo genérico: type, id, props (JsonObject), modifier, actions, children.</td></tr>
+        <tr><td><code>UiAction</code></td><td>Acciones <code>sealed</code> (Navigate, SetVar, Toggle…) + NoOpAction fallback.</td></tr>
+        <tr><td><code>UiModifier</code></td><td>Layout/estilo por <em>tokens</em> (no píxeles).</td></tr>
+        <tr><td><code>DesignTokens</code></td><td>value classes Color/Type/Space/Radius.</td></tr>
+        <tr><td><code>SduiPatch</code></td><td>Operaciones de actualización dirigida.</td></tr>
+        <tr><td><code>SduiJson</code></td><td><code>DefaultSduiJson</code>: discriminador <code>type</code>, forward-compat.</td></tr>
+        <tr><td><code>ProblemDetail</code></td><td>Error RFC 7807 compartido con el cliente.</td></tr>
+        <tr><td><code>Protocol</code></td><td><code>KUISD_VERSION_HEADER = "X-Kuisd-Version"</code>.</td></tr>
+      </table>
+    </div>
+    <div>
+      <h2><span class="n">05</span>API HTTP · :server</h2>
+      <table>
+        <tr><th>Endpoint</th><th>Respuesta</th></tr>
+        <tr><td class="endpoint"><span class="method">GET</span> /health</td><td><code>200</code> "OK"</td></tr>
+        <tr><td class="endpoint"><span class="method">GET</span> /screen/{id}</td><td><code>200</code> <code>SduiEnvelope</code> · <code>404</code> <code>problem+json</code></td></tr>
+      </table>
+      <p style="font-size:.85rem; color:var(--muted);">
+        Plugins activos: ContentNegotiation (reusa <code>DefaultSduiJson</code>), StatusPages →
+        <code>ProblemDetail</code>, CallId (<code>X-Request-Id</code>), Compression (gzip),
+        DefaultHeaders, CORS deny-by-default (<code>KUISD_CORS_HOSTS</code>). Lee el header de
+        capability <code>X-Kuisd-Version</code>. Pantallas resueltas por <code>ScreenRegistry</code>.
+      </p>
+    </div>
+  </div>
+
+  <h2><span class="n">06</span>Spec-Driven Development</h2>
+  <table>
+    <tr><th>Spec</th><th>Alcance</th><th>Estado</th></tr>
+    <tr>
+      <td><code>002-server-foundation</code></td>
+      <td>ProblemDetail, ScreenRegistry, header de capability, Compression/DefaultHeaders/CallId, CORS seguro, <code>SampleScreens</code> fuera del contrato.</td>
+      <td><span class="badge ok">approved · implementado</span></td>
+    </tr>
+    <tr>
+      <td><code>001-sdui-vertical-slice</code></td>
+      <td>Cliente↔server end-to-end: <code>SduiClient</code> (Ktor) + render mínimo en Compose. Depende de la 002.</td>
+      <td><span class="badge draft">draft</span></td>
+    </tr>
+  </table>
+  <p style="font-size:.85rem; color:var(--muted);">
+    Cada feature = <code>requirements.md</code> (EARS) → <code>design.md</code> → <code>tasks.md</code>.
+    Flujo conducido por el comando local <code>/spec</code>. No se codea producción hasta aprobar el diseño.
+  </p>
+
+  <h2><span class="n">07</span>Publicación &amp; calidad</h2>
+  <p>
+    Las librerías <code>sdui-*</code> se publican a Maven con una convención que se auto-aplica a
+    cualquier módulo con ese prefijo (grupo <code>dev.kuisd</code>): <code>./gradlew publishToMavenLocal</code>
+    o a un repo remoto vía <code>-Pkuisd.publish.url/user/password</code>. Gates de calidad:
+    <code>detekt</code> + <code>ktlint</code> en todos los módulos; tests con <code>kotlin.test</code> +
+    <code>testApplication</code> (Ktor).
+  </p>
+
+  <footer>
+    kuisd · Apache License 2.0 © 2026 Johan Garcia ·
+    <a href="https://github.com/driff/kuisd">github.com/driff/kuisd</a>
+  </footer>
+
+</div>
+</body>
+</html>
