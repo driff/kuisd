@@ -36,6 +36,11 @@ object DetailsScreen : ScreenBuilder {
                     ),
                 ),
                 SduiNode(
+                    type = "badge",
+                    id = "badge",
+                    props = JsonObject(mapOf("text" to JsonPrimitive("Nuevo"))),
+                ),
+                SduiNode(
                     type = "button",
                     id = "more",
                     props = JsonObject(mapOf("label" to JsonPrimitive("Ver más"))),
