@@ -16,6 +16,10 @@ data class Navigate(
 ) : UiAction
 
 @Serializable
+@SerialName("navigateBack")
+data object NavigateBack : UiAction
+
+@Serializable
 @SerialName("setVar")
 data class SetVar(
     val name: String,
