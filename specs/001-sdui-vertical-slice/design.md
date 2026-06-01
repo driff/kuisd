@@ -1,6 +1,6 @@
 # Diseño — Slice vertical SDUI (cliente ↔ servidor)
 
-> Spec ID: 001 · Estado: draft · Trazabilidad: ./requirements.md
+> Spec ID: 001 · Estado: approved · Trazabilidad: ./requirements.md
 
 ## Enfoque
 Añadir en `:shared` una capa de cliente HTTP (Ktor) y un render recursivo mínimo de Compose.
@@ -63,6 +63,9 @@ actual val defaultBaseUrl: String = "http://localhost:8080"
   descartada: un único engine multiplataforma (no existe uno bueno para iOS distinto de Darwin).
 - **R9 (timeouts):** `HttpTimeout` (incluido en `ktor-client-core`, sin dependencia extra) evita el
   cuelgue ante un servidor lento/caído; el timeout se propaga como excepción capturada por `SduiScreen`.
+- **`expectSuccess = true`** (post code-review): las respuestas no-2xx lanzan `ResponseException` para
+  que `SduiScreen` lea el `ProblemDetail` del server y muestre un mensaje legible (HU-3.2), en vez de
+  fallar al decodificar un `SduiEnvelope` con un error de serialización críptico.
 
 ### SduiClient — HU-1
 - **Ubicación:** `commonMain` · `dev.kuisd.sdui.SduiClient`.
@@ -78,8 +81,10 @@ class SduiClient(
 }
 ```
 - **Decisión:** `bodyAsText()` + `DefaultSduiJson` en vez de Ktor ContentNegotiation → una
-  dependencia menos y serialización idéntica a la del contrato. Los errores (red/parse) se
+  dependencia menos y serialización idéntica a la del contrato. Los errores (red/parse/HTTP) se
   propagan como excepción y los captura `SduiScreen` (HU-1.3).
+- **Lifecycle (post code-review):** `SduiClient.close()` libera el `HttpClient`. `SduiScreen`, dueño
+  del cliente por defecto, lo cierra vía `DisposableEffect.onDispose` (evita fuga del engine).
 
 ### Estado de UI — HU-3
 - **Ubicación:** `commonMain` (junto a `SduiScreen`).
@@ -100,8 +105,11 @@ fun SduiScreen(
     client: SduiClient = remember { SduiClient() },
 )
 ```
-- **Comportamiento:** `produceState<SduiUiState>(Loading, screenId) { value = runCatching{…}… }`.
+- **Comportamiento:** `produceState<SduiUiState>(Loading, screenId, client) { … }` con `try/catch`
+  que **relanza `CancellationException`** y mapea el resto vía `Throwable.toUserMessage()`
+  (clasifica timeout / `ResponseException`→`ProblemDetail` / parse / red — HU-3.2).
   `Loading` → `CircularProgressIndicator`; `Error` → `Text`; `Content` → `RenderNode(env.root)`.
+  Cierra el cliente con `DisposableEffect`.
 
 ### RenderNode — HU-2
 - **Ubicación:** `commonMain` · `@Composable fun RenderNode(node: SduiNode)`.
