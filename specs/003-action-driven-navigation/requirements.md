@@ -1,85 +1,72 @@
-# Requisitos — Navegación dirigida por acciones (Navigate)
+# Requisitos — Navegación por acciones + frontera Clean Architecture (motor puro / app)
 
-> Spec ID: 003 · Estado: approved · Fecha: 2026-05-31
+> Spec ID: 003 · Estado: draft · Fecha: 2026-05-31
+> Revisión: reescrita tras la corrección de arquitectura (motor SDUI "puro") y la auditoría Clean
+> Architecture + SOLID del código KMP de cliente.
 
 ## Resumen
-Cuando el usuario pulsa un botón cuyo `onClick` contiene una acción `Navigate(route)`, el cliente
-**carga la pantalla destino desde el BFF** (`GET /screen/{route}`) y la muestra, manteniendo una
-**pila de navegación** en memoria. Se añade al contrato `:sdui-core` una acción **`NavigateBack`**
-(pop server-driven) y, además, el host ofrece una afordancia de "atrás" cross-platform. Da contenido
-real al `Navigate("details")` que el `HomeScreen` ya emite y continúa el no-op que el slice 001 dejó
-en `RenderNode`. Demo en cadena de 3 pantallas: `home → details → more`. Funciona en Android, Desktop e iOS.
+Implementar la **navegación dirigida por acciones** (`home → details → more`) estableciendo la
+**frontera limpia** entre el **motor SDUI** (`dev.kuisd.sdui`: solo renderiza el árbol que recibe y
+**delega** las acciones) y la **capa de app** (`dev.kuisd.app`: fetch, estado de carga y navegación).
+Refactoriza el código del slice 001 (que mezclaba fetch + estado + render dentro del motor y acoplaba
+a Ktor) para cumplir **Clean Architecture** (regla de dependencias) y **SOLID** (SRP/DIP/ISP). Añade
+`NavigateBack` al contrato `:sdui-core`.
 
 ## Fuera de alcance
-- Acciones de **variables locales** (`SetVar` / `Toggle` / `Increment`) y `VariableStore`: spec futura.
-- `FireEndpoint` (red real / `POST /action`), `SduiPatch` (patches), `Track`, `CustomAction`: aquí
-  solo se interpretan `Navigate` y `NavigateBack`; el resto queda como no-op/log.
-- Navegación con **argumentos complejos** más allá de `args: Map<String,String>`, **deep links**,
-  `popUpTo`/navegación a un índice concreto, y **persistencia** del back stack (proceso muerto).
-- **Back nativo** de plataforma (botón físico Android, gesto iOS): se usa una afordancia en la UI.
-- Extracción del motor a la librería `:sdui-compose`: aquí todo el cliente vive en `:shared`.
-- Transiciones/animaciones de navegación; título de barra estilizado por tokens.
+- Acciones de variables locales (`SetVar`/`Toggle`/`Increment`), `FireEndpoint`, `SduiPatch`, deep
+  links, persistencia del back stack, back nativo de plataforma.
+- **`ComponentRegistry` abierto** (OCP): el `when (node.type)` del motor se mantiene (4 componentes;
+  YAGNI). `SduiComponent<P>` queda como punto de extensión preparado en `:sdui-core`.
+- **Extracción a módulos Gradle** (`:sdui-compose`, `:app-client`): hoy la frontera es **solo por
+  paquetes** dentro de `:shared`; el salto a módulos será mecánico después.
+- Framework de DI (basta `remember` + defaults) y caché/local source (`ScreenSource` de un método).
 
 ## Historias de usuario y criterios de aceptación
 
-### HU-1 — Navegar al pulsar un botón con `Navigate`
-**Como** usuario **quiero** que al pulsar un botón se abra la pantalla que indica el servidor
-**para** moverme entre pantallas controladas por el BFF.
+### HU-1 — Motor de render puro (`dev.kuisd.sdui`)
+**Como** integrador **quiero** un motor que solo pinte y delegue **para** reutilizarlo en cualquier app.
 
-Criterios (EARS):
-1. The system SHALL exponer un `ActionDispatcher` que interpreta una `List<UiAction>`: para
-   `Navigate` **apila** su `route`; para `NavigateBack` **desapila** el tope (ver HU-2).
-2. WHEN un nodo `button` recibe un click, the system SHALL despachar sus `actions["onClick"]` al
-   `ActionDispatcher` (en lugar del `sduiLog` no-op del slice 001).
-3. WHEN se navega a una `route`, the system SHALL cargar `GET /screen/{route}` del BFF mediante el
-   `SduiClient` compartido del host y renderizar el árbol de la pantalla destino.
-4. WHILE la pantalla destino se carga, the system SHALL mostrar el `SduiUiState.Loading` existente;
-   IF falla, THEN SHALL mostrar el `SduiUiState.Error` legible, sin perder la entrada en la pila.
+1. The engine SHALL renderizar un `SduiNode` dado (column/row/text/button + `UnknownNode`), sin fetch,
+   estado de carga ni navegación.
+2. The engine SHALL definir un seam `SduiActionHandler` (+ `LocalSduiActionHandler`, default no-op) y,
+   al pulsar un botón, **delegar** `actions["onClick"]` a él **sin interpretarlas**.
+3. The engine SHALL depender **solo** de `:sdui-core` + Compose; SHALL NOT importar Ktor ni `dev.kuisd.app`.
+4. The engine SHALL exponer API mínima (`RenderNode`, `SduiActionHandler`, `LocalSduiActionHandler`);
+   el resto (`NodeProps`, `sduiLog`) `internal`.
+5. IF `onClick` ausente/vacío THEN no-op; IF `type` desconocido THEN `UnknownNode` (resiliencia).
 
-### HU-2 — Volver atrás (acción `NavigateBack` + afordancia del host)
-**Como** usuario **quiero** volver a la pantalla anterior **para** deshacer una navegación.
+### HU-2 — Datos tras una abstracción (`dev.kuisd.app.data`, DIP)
+**Como** app **quiero** depender de una abstracción de carga **para** no acoplar presentación a Ktor.
 
-Criterios (EARS):
-1. The system SHALL añadir al contrato `:sdui-core` una acción **`NavigateBack`**; WHEN se despacha,
-   the system SHALL desapilar la pantalla del tope (si hay anterior) y mostrar la previa (recarga del BFF).
-2. The system SHALL ofrecer **además** una afordancia de "atrás" **cross-platform** en una barra
-   superior del host, visible solo cuando hay una pantalla anterior; activarla equivale a `NavigateBack`.
-3. WHILE la pila contiene una sola pantalla (la raíz), the system SHALL ocultar la afordancia de la
-   barra y `NavigateBack` SHALL ser no-op (no se desapila la raíz).
-4. WHEN se navega a una nueva `route`, the system SHALL conservar las pantallas anteriores en orden LIFO.
+1. The app SHALL definir `ScreenSource` (interface) que carga un `SduiEnvelope` por `screenId`; la impl
+   Ktor (`KtorScreenSource`, `SduiClient`, `SduiHttp`+actuals) es `internal`.
+2. The app SHALL traducir los errores de transporte a un mensaje legible **en la capa data**
+   (`HttpErrorMapper`); la presentación SHALL NOT importar Ktor.
 
-### HU-3 — Resiliencia ante acciones y rutas desconocidas
-**Como** usuario **quiero** que una acción o ruta inválida no rompa la app **para** seguir usándola.
+### HU-3 — Estado y render de pantalla (`dev.kuisd.app`)
+1. The app `SduiScreen` SHALL, dado un `ScreenSource` y un `screenId`, producir estado
+   Loading/Error/Content y renderizar el árbol del envelope vía el motor (`RenderNode`).
+2. Reutiliza el modelo de estado del slice 001 (Loading/Error/Content) ya sin Ktor dentro.
 
-Criterios (EARS):
-1. IF una `UiAction` no es `Navigate` ni `NavigateBack` (p. ej. `SetVar`, `FireEndpoint`, `Track`,
-   `CustomAction`, `NoOpAction`), THEN the system SHALL ignorarla con un log (no-op), sin crash.
-2. IF `actions["onClick"]` está ausente o vacío, THEN the system SHALL no hacer nada (no-op silencioso).
-3. IF se navega a una `route` no registrada, THEN el server responde 404 (`ProblemDetail`, spec 002)
-   y the system SHALL mostrar el estado de error de esa entrada, sin corromper la pila (se puede volver).
-4. A clientes con un `:sdui-core` antiguo que no conozcan `NavigateBack`, the system SHALL degradarla a
-   `NoOpAction` vía el fallback polimórfico del contrato (forward-compat; aditivo, sin bump major).
+### HU-4 — Navegación en la app
+1. The app SHALL mantener `NavBackStack` (con `id` estable por entrada) e interpretar las acciones
+   delegadas mediante `NavActionHandler : SduiActionHandler`: `Navigate`→push, `NavigateBack`→pop,
+   resto no-op+log.
+2. `SduiHost` SHALL poseer el `NavBackStack` y el `ScreenSource` (su ciclo de vida), proveer el
+   `LocalSduiActionHandler`, renderizar la pantalla del tope (recarga total por `key(id)`), y ofrecer
+   una afordancia "atrás" cross-platform; en la raíz, oculta y no-op.
 
-### HU-4 — Funcionar en las tres plataformas
-**Como** equipo **quiero** la misma navegación en Android, Desktop e iOS **para** validar KMP.
-
-Criterios (EARS):
-1. The system SHALL implementar la pila, el dispatcher y la afordancia de "atrás" **íntegramente en
-   `commonMain`** de `:shared` (sin `expect/actual` ni navegación específica de plataforma).
-2. The system SHALL usar **un único `SduiClient`** propiedad del `SduiHost` (compartido entre las
-   pantallas de la pila), reutilizando el `SduiClient`/`SduiHttp` del slice 001 sin cliente nuevo.
+### HU-5 — Contrato + plataformas
+1. `:sdui-core` SHALL añadir `NavigateBack` (subtipo `sealed` aditivo; forward-compat → `NoOpAction`).
+2. Todo el cliente en `commonMain`; `SduiHttp` por plataforma (`expect/actual`); el server añade
+   `details` y `more`.
 
 ## Requisitos no funcionales
-- **Resiliencia:** acción desconocida, lista vacía o ruta inexistente nunca provocan crash.
-- **Reutilización:** se reutilizan `SduiClient`, `SduiScreen`/`SduiUiState`, `RenderNode` y el contrato.
-- **Contrato aditivo:** `NavigateBack` es un nuevo subtipo `sealed` de `UiAction` (cambio aditivo,
-  forward-compatible; no rompe a consumidores existentes — HU-3.4).
-- **Simplicidad:** back stack en memoria y afordancia propia, sin librería de navegación ni back nativo.
-- **Calidad:** pasa `detekt` y `ktlintCheck`.
+- **Regla de dependencias** observable: motor no importa Ktor ni `app`; data no importa Compose ni motor;
+  `app` compone las tres. (Opcional: regla detekt `ForbiddenImport` que prohíba `io.ktor.*` en `dev.kuisd.sdui`.)
+- **Resiliencia:** acción/ruta desconocida y `onClick` vacío nunca crashean.
+- **API mínima** (public/internal segun el mapa de diseño); `detekt`/`ktlintCheck` en verde.
 
 ## Dependencias y supuestos
-- **Depende de la spec 001** (`SduiClient`, `SduiScreen`/`SduiUiState`, `RenderNode`, `SduiHttp`) y de
-  la **spec 002** (server con `ScreenRegistry`, `ProblemDetail`, 404 estructurado) — mergeadas.
-- Modifica el contrato `:sdui-core` (añade `NavigateBack`) y el server (añade screens `details` y `more`).
-- El `HomeScreen` ya emite `Navigate("details")`; esta spec añade los destinos reales `details` y `more`.
-- Requiere el `:server` corriendo para el smoke (`./gradlew :server:run`). No añade dependencias al catálogo.
+- Depende de la spec 001 (**refactoriza su código**: mueve fetch/estado fuera del motor) y de la 002.
+- Reutiliza el contrato `:sdui-core` (+`NavigateBack`). El server añade `details`/`more`.

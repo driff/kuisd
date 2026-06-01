@@ -1,218 +1,217 @@
-# Diseño — Navegación dirigida por acciones (Navigate)
+# Diseño — Navegación por acciones + frontera Clean Architecture (motor puro / app)
 
-> Spec ID: 003 · Estado: approved · Trazabilidad: ./requirements.md
+> Spec ID: 003 · Estado: draft · Trazabilidad: ./requirements.md
 
 ## Enfoque
-Introducir en `:shared` un `ActionDispatcher` que interpreta `List<UiAction>`: `Navigate` apila una
-ruta y `NavigateBack` desapila, sobre una **pila de navegación en memoria** (`NavBackStack`). Un nuevo
-composable **`SduiHost`** es dueño del back stack y de **un único `SduiClient` compartido**, renderiza
-la pantalla del tope vía el `SduiScreen` existente, y muestra una **barra superior cross-platform** con
-"atrás" (afordancia de texto, sin dependencia de iconos) cuando hay pantalla anterior. `RenderNode`
-deja de hacer `sduiLog` en el `onClick` y despacha `node.actions["onClick"]` al dispatcher, inyectado
-por `CompositionLocal`. El cambio de pantalla usa "recarga total" (`GET /screen/{route}`). Se añade al
-contrato la acción **`NavigateBack`**, y en el server dos screens (`details`, `more`) para una cadena
-`home → details → more`.
+Separar el código de `:shared` en **capas** (paquetes) con regla de dependencias estricta, e implementar
+la navegación en la capa de app. El **motor** (`dev.kuisd.sdui`) solo renderiza un `SduiNode` y delega
+las acciones por un seam (`SduiActionHandler`/`LocalSduiActionHandler`). La **app** (`dev.kuisd.app`)
+posee el `ScreenSource` (fetch tras interfaz), el estado de carga, el `NavBackStack` y el
+`NavActionHandler` que interpreta `Navigate`/`NavigateBack`. El contrato (`:sdui-core`) gana
+`NavigateBack`. No se crean módulos Gradle: la frontera es por paquetes (preparada para extraer
+`:sdui-compose`/`:app-client` después).
 
-## Arquitectura
-Cliente 100 % en `commonMain` de `:shared` (HU-4.1). Contrato y server también cambian:
-
+## Capas y regla de dependencias
 ```
-sdui-core/src/commonMain/.../core/
-└── UiAction.kt           # (cambia) + data object NavigateBack : UiAction  @SerialName("navigateBack")
-
-shared/src/commonMain/kotlin/dev/kuisd/sdui/
-├── NavBackStack.kt       # pila en memoria (snapshot-state)              (HU-2)
-├── ActionDispatcher.kt   # interpreta Navigate/NavigateBack              (HU-1, HU-3)
-├── SduiHost.kt           # @Composable: dueño del back stack + SduiClient único + barra atrás
-├── SduiScreen.kt         # (cambia) recibe client + modifier; ya no cierra el cliente
-├── RenderNode.kt         # (cambia) button.onClick -> dispatcher
-└── presentation/PlaceholderApp.kt   # (cambia) monta SduiHost("home")
-
-server/src/main/kotlin/dev/kuisd/server/screens/
-├── DetailsScreen.kt      # NUEVO "details": botón "Ver más" -> Navigate("more") + "Atrás" -> NavigateBack
-├── MoreScreen.kt         # NUEVO "more": botón "Atrás" -> NavigateBack
-└── ScreenRegistry.kt     # (cambia) registra "details" y "more"
+:sdui-core (dev.kuisd.sdui.core)        contrato @Serializable — no depende de nadie del cliente
+        ▲
+dev.kuisd.sdui      (MOTOR, Compose)    depende SOLO de core + Compose; PROHIBIDO Ktor y app
+        ▲
+dev.kuisd.app.data  (DATA, Ktor)        depende de core; NO conoce Compose ni el motor
+        ▲
+dev.kuisd.app       (APP/composición)   depende de motor + data + core (único que ve Ktor y Compose)
 ```
 
-Flujo: `SduiHost("home")` posee `NavBackStack(initial="home")` + un `SduiClient` →
-renderiza `SduiScreen(current.route, client=shared)` → `RenderNode` lee `LocalActionDispatcher` y en el
-`onClick` del botón llama `dispatcher.dispatch(node.actions["onClick"])` → el dispatcher hace
-`push`/`pop` sobre el back stack → recomposición → `SduiHost` renderiza el nuevo tope (nuevo
-`produceState` por `key(route)` → recarga del BFF) y muestra/oculta la barra "atrás".
+## Mapa de paquetes dentro de `:shared` (commonMain salvo nota)
+```
+dev/kuisd/
+├── sdui/                          ← MOTOR (candidato a :sdui-compose)
+│   ├── RenderNode.kt              public  @Composable RenderNode(node)  — delega acciones
+│   ├── SduiActionHandler.kt       public  fun interface + LocalSduiActionHandler (SEAM)
+│   ├── NodeProps.kt               internal helpers de props
+│   └── Logging.kt                 internal sduiLog
+└── app/
+    ├── data/
+    │   ├── ScreenSource.kt        public   interface (SEAM de entrada, DIP)
+    │   ├── KtorScreenSource.kt    internal impl (usa SduiClient)
+    │   ├── SduiClient.kt          internal (mover desde sdui/)
+    │   ├── SduiHttp.kt            internal expect (commonMain) + actuals (android/ios/desktopMain)
+    │   └── HttpErrorMapper.kt     internal Throwable→mensaje legible (saca Ktor de presentación)
+    ├── ScreenUiState.kt           public   sealed Loading/Error/Content
+    ├── SduiScreen.kt              public   @Composable: estado + render (sin Ktor)
+    ├── nav/
+    │   ├── NavBackStack.kt        public   pila (snapshot-state, id estable) + NavEntry
+    │   └── NavActionHandler.kt    internal SduiActionHandler que interpreta Navigate/NavigateBack
+    ├── SduiHost.kt                public   @Composable: dueño de NavBackStack + ScreenSource + handler
+    └── presentation/PlaceholderApp.kt   monta SduiHost("home")
+```
+> Nota expect/actual: `SduiHttp` se mueve a `dev.kuisd.app.data` manteniendo `expect` en commonMain y
+> `actual` en android/ios/desktopMain (mismo patrón del slice 001, solo cambia el paquete).
 
 ## Componentes y contratos
 
-### Contrato: `NavigateBack` (`:sdui-core`) — HU-2.1, HU-3.4
-- **Cambio en `UiAction.kt`:** nuevo subtipo `sealed` (aditivo, forward-compatible).
+### MOTOR · SduiActionHandler (seam de salida) — HU-1.2, DIP
 ```kotlin
-@Serializable
-@SerialName("navigateBack")
-data object NavigateBack : UiAction
-```
-- Clientes con `:sdui-core` antiguo: `NavigateBack` cae al `polymorphicDefaultDeserializer` →
-  `NoOpAction` (HU-3.4). Test de round-trip en `sdui-core` `commonTest`.
-
-### NavBackStack — HU-2, HU-4.1
-- **Ubicación:** `commonMain` · `dev.kuisd.sdui.NavBackStack`.
-```kotlin
-data class NavEntry(val route: String, val args: Map<String, String> = emptyMap())
-
-@Stable
-class NavBackStack(initial: NavEntry) {
-    var entries: List<NavEntry> by mutableStateOf(listOf(initial))
-        private set
-    val current: NavEntry get() = entries.last()
-    val canGoBack: Boolean get() = entries.size > 1
-
-    fun push(entry: NavEntry) { entries = entries + entry }
-    fun pop(): Boolean {                       // no desapila la raíz (HU-2.3)
-        if (entries.size <= 1) return false
-        entries = entries.dropLast(1)
-        return true
-    }
-}
-```
-- **Decisión:** estado con `mutableStateOf` (no `StateFlow`): único consumidor es la composición de
-  `SduiHost`. Descartado: Navigation Compose/3 (dependencia + rutas tipadas que chocan con rutas
-  dinámicas del BFF) y `expect/actual` sobre back nativo.
-
-### ActionDispatcher — HU-1, HU-2.1, HU-3
-- **Ubicación:** `commonMain` · `dev.kuisd.sdui.ActionDispatcher`.
-```kotlin
-fun interface ActionDispatcher {
-    fun dispatch(actions: List<UiAction>)
+// dev.kuisd.sdui  (public)
+fun interface SduiActionHandler {
+    fun handle(actions: List<UiAction>)
 }
 
-class NavigationActionDispatcher(
-    private val backStack: NavBackStack,
-) : ActionDispatcher {
-    override fun dispatch(actions: List<UiAction>) {
-        actions.forEach { action ->
-            when (action) {
-                is Navigate -> backStack.push(NavEntry(action.route, action.args))
-                NavigateBack -> backStack.pop()           // no-op si solo queda la raíz
-                else -> sduiLog("acción no soportada en spec 003 (no-op): ${action::class.simpleName}")
-            }
-        }
-    }
-}
-
-val LocalActionDispatcher: ProvidableCompositionLocal<ActionDispatcher> =
-    staticCompositionLocalOf { ActionDispatcher { /* no-op por defecto fuera de un SduiHost */ } }
+val LocalSduiActionHandler: ProvidableCompositionLocal<SduiActionHandler> =
+    staticCompositionLocalOf { SduiActionHandler { } }   // default no-op: RenderNode usable sin host
 ```
-- **Decisión:** firma mínima `dispatch(List<UiAction>)` (sin store/red, specs futuras). `CompositionLocal`
-  evita propagar el dispatcher por parámetro en `RenderNode`. El default no-op cubre `RenderNode` sin host.
 
-### SduiHost — HU-1, HU-2, HU-4.2
-- **Ubicación:** `commonMain` · `@Composable`. **Dueño del back stack y del `SduiClient` único** (HU-4.2).
-```kotlin
-@Composable
-fun SduiHost(
-    startRoute: String,
-    modifier: Modifier = Modifier,
-) {
-    val backStack = remember { NavBackStack(NavEntry(startRoute)) }
-    val dispatcher = remember { NavigationActionDispatcher(backStack) }
-    val client = remember { SduiClient() }
-    DisposableEffect(client) { onDispose { client.close() } }   // el host posee el ciclo de vida (HU-4.2)
-
-    val current = backStack.current
-    Scaffold(
-        modifier = modifier,
-        topBar = {
-            if (backStack.canGoBack) {                          // afordancia cross-platform (HU-2.2)
-                TopAppBar(
-                    title = { Text(current.route) },            // título provisional = route
-                    navigationIcon = {
-                        TextButton(onClick = { backStack.pop() }) { Text("‹ Atrás") }  // sin dep de iconos
-                    },
-                )
-            }
-        },
-    ) { padding ->
-        CompositionLocalProvider(LocalActionDispatcher provides dispatcher) {
-            key(current.route) {                                // produceState nuevo => recarga total (HU-1.3)
-                SduiScreen(
-                    screenId = current.route,
-                    client = client,
-                    modifier = Modifier.padding(padding),
-                )
-            }
-        }
-    }
-}
-```
-- **Decisiones:**
-  - **`SduiClient` único** creado y cerrado por el host (HU-4.2): no se abre/cierra el engine HTTP en
-    cada navegación. `SduiScreen` deja de gestionar el ciclo de vida del cliente (ver abajo).
-  - **Afordancia de texto** (`TextButton("‹ Atrás")`) en `TopAppBar`: `material-icons` no está en
-    `:shared`; se evita añadir dependencia. La barra también dispara `pop` (equivalente a `NavigateBack`).
-  - **`key(current.route)`**: fuerza recomposición/`produceState` nuevo al cambiar el tope → recarga total.
-  - **`title = current.route`**: provisional; título por `meta`/tokens es spec futura.
-
-### SduiScreen (cambio) — propiedad del cliente movida al host
-- **Ubicación:** `commonMain` · `SduiScreen.kt` (existente). Cambios respecto al slice 001:
-  - Recibe `client: SduiClient` (lo provee el host) y un `modifier: Modifier = Modifier`.
-  - **Ya NO crea ni cierra** el `SduiClient` (sin `DisposableEffect.onDispose { client.close() }`): el
-    dueño es el `SduiHost`. Evita cerrar un cliente compartido al desmontar una pantalla al navegar.
-```kotlin
-@Composable
-fun SduiScreen(
-    screenId: String,
-    client: SduiClient,                 // requerido: lo posee el SduiHost
-    modifier: Modifier = Modifier,
-)
-```
-- Lógica de `produceState`/estados (Loading/Error/Content) y mapeo de error legible: **sin cambios**.
-
-### RenderNode (cambio) — HU-1.2, HU-3.1, HU-3.2
+### MOTOR · RenderNode — HU-1.1, HU-1.5
+- `@Composable fun RenderNode(node: SduiNode)` con `when (node.type)`: column/row/text/button + `UnknownNode`.
+- El botón **delega**, no interpreta:
 ```kotlin
 "button" -> {
-    val dispatcher = LocalActionDispatcher.current
-    Button(
-        onClick = { dispatcher.dispatch(node.actions["onClick"].orEmpty()) },  // vacío => no-op (HU-3.2)
-    ) {
+    val handler = LocalSduiActionHandler.current
+    Button(onClick = { handler.handle(node.actions["onClick"].orEmpty()) }) {
         Text(node.stringProp("label").orEmpty())
     }
 }
 ```
-- El filtrado por tipo de acción lo hace el `ActionDispatcher` (HU-3.1), no `RenderNode`.
+- `NodeProps`/`sduiLog` pasan a `internal`. El motor no importa Ktor ni `dev.kuisd.app`.
 
-### Server: DetailsScreen + MoreScreen (nuevos) — cadena home→details→more
-- `DetailsScreen` ("details"): texto "Detalles" + botón "Ver más" → `Navigate("more")` + botón
-  "Atrás" → `NavigateBack`.
-- `MoreScreen` ("more"): texto "Más" + botón "Atrás" → `NavigateBack`.
-- `ScreenRegistry.defaultScreenRegistry()` registra `home`, `details`, `more`:
+### DATA · ScreenSource (+ impl Ktor) — HU-2, DIP-1
 ```kotlin
-ScreenRegistry(mapOf("home" to HomeScreen, "details" to DetailsScreen, "more" to MoreScreen))
+// dev.kuisd.app.data  (public)
+fun interface ScreenSource {
+    suspend fun load(screenId: String, args: Map<String, String> = emptyMap()): SduiEnvelope
+}
+
+// internal — la impl Ktor; SduiClient/SduiHttp quedan como detalle privado
+internal class KtorScreenSource(
+    private val client: SduiClient = SduiClient(),
+) : ScreenSource {
+    override suspend fun load(screenId: String, args: Map<String, String>): SduiEnvelope =
+        client.fetchScreen(screenId)
+    fun close() { client.close() }
+}
 ```
-- (El `HomeScreen` ya emite `Navigate("details")` en su botón "Empezar"; no cambia.)
+- `HttpErrorMapper` (internal, data): traduce `ResponseException`/timeouts/parse a un `String` legible
+  (mueve aquí `toUserMessage`/`problemMessage` de `SduiScreen`, con los imports de Ktor). Reutiliza el
+  `ProblemDetail` del server.
+
+### APP · ScreenUiState + SduiScreen — HU-3, SRP
+```kotlin
+// dev.kuisd.app  (public)
+sealed interface ScreenUiState {
+    data object Loading : ScreenUiState
+    data class Error(val message: String) : ScreenUiState
+    data class Content(val envelope: SduiEnvelope) : ScreenUiState
+}
+
+@Composable
+fun SduiScreen(
+    screenId: String,
+    source: ScreenSource,                 // depende de la abstracción, NO de SduiClient/Ktor
+    modifier: Modifier = Modifier,
+) {
+    val state by produceState<ScreenUiState>(ScreenUiState.Loading, screenId, source) {
+        value = try {
+            ScreenUiState.Content(source.load(screenId))
+        } catch (c: CancellationException) {
+            throw c
+        } catch (e: Throwable) {
+            ScreenUiState.Error(HttpErrorMapper.message(e))   // mapeo vive en data
+        }
+    }
+    when (val s = state) { /* Loading -> spinner; Error -> Text; Content -> RenderNode(s.envelope.root) */ }
+}
+```
+- `SduiScreen` ya **no** crea ni cierra cliente (lo hace el host) ni importa Ktor (SRP-1, CA-1).
+
+### APP · NavBackStack + NavActionHandler — HU-4.1
+```kotlin
+// dev.kuisd.app.nav
+data class NavEntry(val id: Long, val route: String, val args: Map<String, String> = emptyMap())   // public
+
+@Stable
+class NavBackStack(startRoute: String, startArgs: Map<String, String> = emptyMap()) {               // public
+    private var nextId = 0L
+    var entries: List<NavEntry> by mutableStateOf(listOf(NavEntry(nextId++, startRoute, startArgs)))
+        private set
+    val current: NavEntry get() = entries.last()
+    val canGoBack: Boolean get() = entries.size > 1
+    fun push(route: String, args: Map<String, String> = emptyMap()) { entries = entries + NavEntry(nextId++, route, args) }
+    fun pop(): Boolean { if (entries.size <= 1) return false; entries = entries.dropLast(1); return true }
+}
+
+internal class NavActionHandler(private val backStack: NavBackStack) : SduiActionHandler {
+    override fun handle(actions: List<UiAction>) = actions.forEach {
+        when (it) {
+            is Navigate -> backStack.push(it.route, it.args)
+            NavigateBack -> backStack.pop()
+            else -> sduiLog("acción no soportada (no-op): ${it::class.simpleName}")
+        }
+    }
+}
+```
+
+### APP · SduiHost — HU-4.2
+```kotlin
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SduiHost(startRoute: String, modifier: Modifier = Modifier) {
+    val backStack = remember { NavBackStack(startRoute) }
+    val source = remember { KtorScreenSource() }
+    DisposableEffect(source) { onDispose { source.close() } }     // el host posee el ciclo de vida (SRP/DIP)
+    val handler = remember { NavActionHandler(backStack) }
+
+    val current = backStack.current
+    Scaffold(
+        modifier = modifier,
+        topBar = { if (backStack.canGoBack) TopAppBar(title = { Text(current.route) }, navigationIcon = {
+            TextButton(onClick = { backStack.pop() }) { Text("‹ Atrás") }
+        }) },
+    ) { padding ->
+        CompositionLocalProvider(LocalSduiActionHandler provides handler) {
+            key(current.id) { SduiScreen(current.route, source, Modifier.padding(padding)) }
+        }
+    }
+}
+```
+- `KtorScreenSource` se usa aquí como impl concreta del seam; si se quisiera testear el host con un
+  `FakeScreenSource`, basta sobrecargar el parámetro (no requerido en esta spec).
+
+### CONTRATO · NavigateBack (`:sdui-core`) — HU-5.1
+```kotlin
+@Serializable @SerialName("navigateBack") data object NavigateBack : UiAction
+```
+Forward-compat: un `:sdui-core` antiguo lo degrada a `NoOpAction` vía `polymorphicDefaultDeserializer`.
+
+### SERVER · DetailsScreen + MoreScreen
+- `details`: texto "Detalles" + botón "Ver más" → `Navigate("more")` + botón "Atrás" → `NavigateBack`.
+- `more`: texto "Más" + botón "Atrás" → `NavigateBack`.
+- `defaultScreenRegistry()` registra `home`, `details`, `more`.
+
+## public / internal (exponer lo necesario)
+- **public:** `RenderNode`, `SduiActionHandler`, `LocalSduiActionHandler`, `ScreenSource`,
+  `ScreenUiState`, `SduiScreen`, `SduiHost`, `NavBackStack`/`NavEntry`.
+- **internal:** `SduiClient`, `SduiHttp`(+actuals), `KtorScreenSource`, `HttpErrorMapper`,
+  `NavActionHandler`, `NodeProps`, `sduiLog`.
 
 ## Modelo de datos y estados
-- Contrato: `UiAction` gana `NavigateBack`. Resto reutilizado (`Navigate`, `SduiNode`, `SduiEnvelope`).
-- Estado de navegación local: `NavBackStack.entries: List<NavEntry>` (snapshot-state), sin persistencia.
-- `SduiUiState` (slice 001) sin cambios.
-
-## Dependencias nuevas (catálogo)
-Ninguna. Se usan Compose Material3 (`Scaffold`, `TopAppBar`, `TextButton`) y Coroutines ya presentes.
+Contrato (+`NavigateBack`) reutilizado. `ScreenUiState` (app). `NavBackStack.entries` snapshot-state
+(id estable). Sin persistencia.
 
 ## Riesgos y mitigaciones
-- **Recarga por navegación** (push/pop recargan del BFF) → es la estrategia "recarga total" elegida;
-  caché por entrada es mejora futura.
-- **Cierre indebido del cliente compartido** → mitigado: el ciclo de vida del `SduiClient` vive solo en
-  `SduiHost`; `SduiScreen` ya no lo cierra. Cubierto al verificar navegación ida/vuelta sin error de red.
-- **`NavigateBack` en la raíz** → `pop()` devuelve `false` y no vacía la pila (HU-2.3); barra oculta.
-- **Acción/ruta desconocida** → no-op con log / 404 `ProblemDetail` mostrado sin corromper la pila (HU-3).
-- **Back nativo no integrado** → en Android el back físico podría salir de la app; aceptado (afordancia en barra).
+- **Refactor amplio (mueve código de la 001)** → es mecánico (mover archivos entre paquetes + 2
+  interfaces); la funcionalidad no cambia. Verificación por compilación + tests existentes adaptados.
+- **Regla de dependencias** → revisable por imports (motor sin `io.ktor.*`); opcional reforzar con detekt.
+- `NavigateBack` en raíz → `pop` no-op; ruta inexistente → 404 `ProblemDetail` mapeado a `Error` sin
+  corromper la pila.
 
 ## Estrategia de verificación
-- **Unit (`:sdui-core` commonTest):** round-trip de `NavigateBack`; un `type` desconocido sigue cayendo a `NoOpAction`.
-- **Unit (`:shared` commonTest):**
-  - `NavBackStack`: `push`/`pop`/`canGoBack`; `pop` en pila de 1 → `false` y no vacía.
-  - `NavigationActionDispatcher`: `Navigate("details")` apila; `NavigateBack` desapila; en raíz no-op;
-    acción no soportada y `emptyList()` no alteran la pila.
-- **Unit (`:server` testApplication):** `GET /screen/details` y `/screen/more` → 200 con su `screenId`;
-  `GET /screen/home` sigue 200.
-- **Smoke manual end-to-end:** `:server:run` + `:desktopApp:run`: `home` ("Empezar") → `details`
-  ("Ver más") → `more`; "Atrás" (barra) sube en la pila hasta `home`; la barra desaparece en la raíz.
-- **Calidad:** `./gradlew :sdui-core:check :shared:assemble :server:build :androidApp:assembleDebug detekt ktlintCheck` en verde.
+- **Unit `:sdui-core`:** round-trip de `NavigateBack`; unknown type → `NoOpAction`.
+- **Unit `:shared` (motor):** (si es testeable sin UI) — el grueso del motor se valida por compilación +
+  smoke; `NodeProps` test si aplica.
+- **Unit `:shared` (app):** `NavBackStack` (push/pop/raíz/ids distintos misma route); `NavActionHandler`
+  (Navigate push, NavigateBack pop, raíz no-op, acción no soportada / lista vacía no alteran la pila).
+- **Unit `:server`:** `GET /screen/details` y `/more` → 200 con su `screenId`; `home` sigue 200.
+- **Regla de dependencias:** `grep` confirma que `dev/kuisd/sdui/` no importa `io.ktor.` ni `dev.kuisd.app`.
+- **Smoke:** `:server:run` + `:desktopApp:run`: `home`→"Empezar"→`details`→"Ver más"→`more`; "‹ Atrás"
+  sube hasta `home`; barra oculta en raíz.
+- **Calidad:** `./gradlew :sdui-core:check :shared:assemble :shared:check :server:build :androidApp:assembleDebug detekt ktlintCheck` en verde.
