@@ -1,6 +1,6 @@
 # Requisitos — Slice vertical SDUI (cliente ↔ servidor)
 
-> Spec ID: 001 · Estado: draft · Fecha: 2026-05-31
+> Spec ID: 001 · Estado: approved · Fecha: 2026-05-31
 
 ## Resumen
 Conectar el cliente Compose con el `:server` Ktor: el cliente pide `GET /screen/home`,

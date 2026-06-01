@@ -1,6 +1,6 @@
 # Diseño — Slice vertical SDUI (cliente ↔ servidor)
 
-> Spec ID: 001 · Estado: draft · Trazabilidad: ./requirements.md
+> Spec ID: 001 · Estado: approved · Trazabilidad: ./requirements.md
 
 ## Enfoque
 Añadir en `:shared` una capa de cliente HTTP (Ktor) y un render recursivo mínimo de Compose.
