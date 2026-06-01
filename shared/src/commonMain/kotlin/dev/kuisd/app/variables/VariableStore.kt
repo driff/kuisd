@@ -17,7 +17,7 @@ import kotlinx.serialization.json.intOrNull
  */
 @Stable
 class VariableStore {
-    var vars: Map<String, JsonElement> by mutableStateOf(emptyMap())
+    internal var vars: Map<String, JsonElement> by mutableStateOf(emptyMap())
         private set
 
     /** Vista de solo lectura observada por Compose: el motor lee bindings por aquí. */
