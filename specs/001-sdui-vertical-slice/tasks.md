@@ -43,22 +43,21 @@ Cada tarea es atómica y verificable. Marca `[x]` solo cuando su verificación p
   - _ref:_ HU-2, HU-4.3 · design §Arquitectura, §Riesgos
   - _verif:_ `:androidApp:assembleDebug` y `:desktopApp` compilan.
 
-- [ ] **T8** — Smoke end-to-end: `:server:run` + `:desktopApp:run` muestra "Bienvenido a kuisd"
+- [x] **T8** — Smoke end-to-end: `:server:run` + `:desktopApp:run` muestra "Bienvenido a kuisd"
   y el botón "Empezar" servidos por el BFF.
   - _ref:_ HU-1, HU-2, HU-3 · design §Verificación
   - _verif:_ observación manual de la ventana desktop con el server arriba.
-  - _nota:_ pendiente verificación manual (requiere pantalla; no verificable en este entorno).
-    El data-path SÍ está validado: con `:server:run` arriba, `curl localhost:8080/screen/home`
-    devuelve el `SduiEnvelope` con `screenId=home`, el texto "Bienvenido a kuisd" y el botón
-    "Empezar" que `RenderNode` mapea.
+  - _nota:_ **confirmado visualmente por el usuario (2026-05-31)**: la ventana desktop renderiza el
+    árbol de `home` servido por el BFF (texto "Bienvenido a kuisd" + botón "Empezar"). Requirió el fix
+    `application.javaHome = JDK 25` en `desktopApp/build.gradle.kts` para que `:desktopApp:run` arranque.
 
 - [x] **T9** — Calidad: `detekt` + `ktlintCheck` (o `ktlintFormat`) en verde para `:shared`.
   - _ref:_ RNF · design §Verificación
   - _verif:_ `./gradlew :shared:assemble detekt ktlintCheck` sin fallos.
 
 ## Verificación final (Definition of Done)
-- [ ] El cliente desktop renderiza la pantalla `home` obtenida del `:server` (no hardcode).
-  _Pendiente verificación visual manual (T8); el data-path está validado vía curl._
+- [x] El cliente desktop renderiza la pantalla `home` obtenida del `:server` (no hardcode).
+  _Confirmado visualmente por el usuario (2026-05-31)._
 - [x] Un nodo de tipo desconocido degrada a marcador sin crash. _(`RenderNode` rama `else → UnknownNode`)_
 - [x] `:shared:assemble`, `:androidApp:assembleDebug`, `detekt` y `ktlintCheck` en verde.
-- [ ] `tasks.md` con todas las tareas marcadas `[x]`. _T8 queda `[ ]` (verificación manual pendiente)._
+- [x] `tasks.md` con todas las tareas marcadas `[x]`.
