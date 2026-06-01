@@ -10,6 +10,8 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.testing.testApplication
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -87,6 +89,24 @@ class ApplicationTest {
         application { module() }
         val response = client.get("/health")
         assertNotNull(response.headers[HttpHeaders.XRequestId], "esperaba header de correlación")
+    }
+
+    @Test
+    fun screen_counter_serves_an_envelope_with_initial_variables() = testApplication {
+        application { module() }
+        val response = client.get("/screen/counter")
+        assertEquals(HttpStatusCode.OK, response.status)
+
+        val envelope = DefaultSduiJson.decodeFromString(SduiEnvelope.serializer(), response.bodyAsText())
+        assertEquals("counter", envelope.screenId)
+        assertEquals(JsonPrimitive(0), envelope.variables["count"])
+        assertEquals(JsonPrimitive(false), envelope.variables["flag"])
+        assertTrue(
+            envelope.root.children.any { node ->
+                node.type == "text" && node.props["text"]?.jsonPrimitive?.content == "\$count"
+            },
+            "esperaba un text con props.text==\"\$count\"",
+        )
     }
 
     @Test

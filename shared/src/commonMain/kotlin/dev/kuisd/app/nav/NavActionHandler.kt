@@ -1,23 +1,26 @@
 package dev.kuisd.app.nav
 
-import dev.kuisd.app.appLog
-import dev.kuisd.sdui.SduiActionHandler
+import dev.kuisd.app.SubHandler
 import dev.kuisd.sdui.core.Navigate
 import dev.kuisd.sdui.core.NavigateBack
 import dev.kuisd.sdui.core.UiAction
 
 /**
- * Handler de navegación: `Navigate` apila, `NavigateBack` desapila; el resto de acciones
- * son no-op con log (HU-4.1).
+ * Handler de navegación (HU-4.1): `Navigate` apila, `NavigateBack` desapila. Las acciones que no
+ * soporta las ignora **en silencio** — el `AppActionHandler` compuesto loguea las que ningún
+ * sub-handler acepte (sin doble log).
  */
 internal class NavActionHandler(
     private val backStack: NavBackStack,
-) : SduiActionHandler {
+) : SubHandler {
+    override fun supports(action: UiAction): Boolean =
+        action is Navigate || action === NavigateBack
+
     override fun handle(actions: List<UiAction>) = actions.forEach { action ->
         when (action) {
             is Navigate -> backStack.push(action.route, action.args)
             NavigateBack -> backStack.pop()
-            else -> appLog("acción no soportada en spec 003 (no-op): ${action::class.simpleName}")
+            else -> { /* no soportado: silencio */ }
         }
     }
 }
