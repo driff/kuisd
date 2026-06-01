@@ -1,0 +1,52 @@
+name: iosApp
+options:
+  bundleIdPrefix: dev.kuisd
+  deploymentTarget:
+    iOS: "16.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.10"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO   # required for embedAndSignAppleFrameworkForXcode
+    ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES: YES
+
+targets:
+  iosApp:
+    type: application
+    platform: iOS
+    sources:
+      - path: iosApp
+    info:
+      path: iosApp/Info.plist
+      properties:
+        CFBundleDisplayName: kuisd
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        CADisableMinimumFrameDurationOnPhone: true
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UIRequiredDeviceCapabilities:
+          - arm64
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.kuisd.app
+        TARGETED_DEVICE_FAMILY: "1,2"
+        FRAMEWORK_SEARCH_PATHS:
+          - $(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)
+        LD_RUNPATH_SEARCH_PATHS:
+          - "$(inherited)"
+          - "@executable_path/Frameworks"
+    preBuildScripts:
+      - name: Build shared KMP framework
+        script: |
+          cd "$SRCROOT/.."
+          ./gradlew :shared:embedAndSignAppleFrameworkForXcode
+        inputFiles:
+          - $(SRCROOT)/../shared/build.gradle.kts
+        outputFiles:
+          - $(SRCROOT)/../shared/build/xcode-frameworks/$(CONFIGURATION)/$(SDK_NAME)/shared.framework/shared

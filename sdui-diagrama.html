@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SDUI · Ktor BFF + KMP — Cómo funciona</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a1018; --bg2:#0e1822; --panel:#101e2b; --panel2:#13283a;
+    --line:#1d3a52; --grid:rgba(64,120,160,.07);
+    --ink:#cfe4f2; --dim:#6f93ab; --faint:#46627a;
+    --cyan:#34e0d4; --amber:#ffb454; --pink:#ff7597; --violet:#9d8cff; --green:#7ee787;
+    --mono:'JetBrains Mono',ui-monospace,monospace; --disp:'Syne',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg); color:var(--ink); font-family:var(--mono);
+    font-size:14px; line-height:1.55; overflow-x:hidden;
+    background-image:
+      linear-gradient(var(--grid) 1px,transparent 1px),
+      linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:32px 32px;
+  }
+  .wrap{max-width:1060px;margin:0 auto;padding:0 22px 90px}
+  ::selection{background:var(--cyan);color:#04121a}
+
+  /* ---------- header ---------- */
+  header{padding:64px 0 30px;border-bottom:1px solid var(--line);margin-bottom:46px;position:relative}
+  .tag{font-size:11px;letter-spacing:.32em;color:var(--cyan);text-transform:uppercase;margin-bottom:18px}
+  h1{font-family:var(--disp);font-weight:800;font-size:clamp(34px,6vw,62px);line-height:.98;letter-spacing:-.02em}
+  h1 .b{color:var(--amber)} h1 .c{color:var(--cyan)}
+  .sub{color:var(--dim);margin-top:18px;max-width:640px;font-size:14px}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:26px;font-size:11px;color:var(--faint)}
+  .legend span{display:flex;align-items:center;gap:7px}
+  .dot{width:9px;height:9px;border-radius:2px;display:inline-block}
+
+  section{margin:58px 0}
+  h2{font-family:var(--disp);font-weight:700;font-size:24px;letter-spacing:-.01em;margin-bottom:6px;display:flex;align-items:baseline;gap:12px}
+  h2 .n{font-family:var(--mono);font-size:12px;color:var(--cyan);border:1px solid var(--line);border-radius:5px;padding:2px 8px}
+  .lede{color:var(--dim);margin-bottom:26px;max-width:760px}
+
+  /* ---------- architecture ---------- */
+  .arch{display:grid;grid-template-columns:1fr 1fr;gap:18px;position:relative}
+  .node{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;position:relative;transition:.25s}
+  .node:hover{border-color:var(--cyan);transform:translateY(-2px)}
+  .node h3{font-family:var(--disp);font-size:16px;margin-bottom:4px}
+  .node .role{font-size:11px;color:var(--faint);margin-bottom:14px;letter-spacing:.04em}
+  .node ul{list-style:none;font-size:12px;color:var(--dim)}
+  .node li{padding:3px 0 3px 16px;position:relative}
+  .node li::before{content:'›';position:absolute;left:0;color:var(--cyan)}
+  .contract{grid-column:1 / -1;background:linear-gradient(180deg,var(--panel2),var(--panel));border-color:var(--amber)}
+  .contract .role{color:var(--amber)}
+  .contract h3 .pill{font-size:10px;background:var(--amber);color:#1a1206;padding:2px 7px;border-radius:20px;margin-left:8px;vertical-align:middle;letter-spacing:.05em}
+  .shareline{display:flex;align-items:center;justify-content:center;gap:10px;color:var(--faint);font-size:11px;margin:4px 0 2px}
+  .shareline .arr{flex:1;height:1px;background:repeating-linear-gradient(90deg,var(--amber) 0 6px,transparent 6px 12px)}
+
+  /* ---------- flow player ---------- */
+  .flow{background:var(--bg2);border:1px solid var(--line);border-radius:14px;padding:24px;position:relative;overflow:hidden}
+  .stage{display:grid;grid-template-columns:1fr 70px 1fr;gap:0;align-items:stretch;min-height:340px}
+  .col{padding:6px}
+  .col-h{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--faint);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+  .col-h b{color:var(--cyan);font-weight:700}
+  .col.cli .col-h b{color:var(--violet)}
+  .step{background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:11px 13px;margin-bottom:10px;font-size:12px;color:var(--dim);opacity:.32;transform:translateX(0);transition:.45s cubic-bezier(.4,1.2,.4,1)}
+  .step .t{color:var(--ink);font-weight:500;display:block;margin-bottom:2px;font-size:12px}
+  .step.on{opacity:1;border-color:var(--cyan);box-shadow:0 0 0 1px var(--cyan),0 8px 30px -12px var(--cyan)}
+  .col.cli .step.on{border-color:var(--violet);box-shadow:0 0 0 1px var(--violet),0 8px 30px -12px var(--violet)}
+  .step.on .t{color:#fff}
+  .pipe{position:relative;display:flex;align-items:center;justify-content:center}
+  .pipe svg{position:absolute;inset:0;width:100%;height:100%}
+  .pkt{position:absolute;width:14px;height:14px;border-radius:3px;background:var(--amber);left:50%;top:50%;transform:translate(-50%,-50%) scale(0);box-shadow:0 0 16px var(--amber);transition:.5s}
+  .ctrl{display:flex;gap:12px;align-items:center;margin-top:20px;flex-wrap:wrap}
+  button.play{font-family:var(--mono);font-weight:700;font-size:13px;background:var(--cyan);color:#04121a;border:none;border-radius:8px;padding:11px 22px;cursor:pointer;letter-spacing:.03em;transition:.2s}
+  button.play:hover{background:#5cf0e5;transform:translateY(-1px)}
+  button.play:active{transform:translateY(0)}
+  .phase{font-size:11px;color:var(--faint)}
+  .phase b{color:var(--amber)}
+
+  /* ---------- mapping ---------- */
+  .map{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+  pre{background:#08121b;border:1px solid var(--line);border-radius:12px;padding:18px;overflow:auto;font-size:12px;line-height:1.7}
+  pre code{font-family:var(--mono)}
+  .k{color:var(--cyan)} .s{color:var(--amber)} .ty{color:var(--pink);font-weight:700} .nu{color:var(--green)} .pn{color:var(--dim)}
+  .ln{display:block;border-radius:4px;padding:0 4px;margin:0 -4px;transition:.2s}
+  .ln.hl{background:rgba(52,224,212,.12);box-shadow:inset 2px 0 0 var(--cyan)}
+
+  .device{background:var(--panel);border:1px solid var(--line);border-radius:26px;padding:14px;max-width:300px;margin:0 auto;box-shadow:0 30px 60px -30px #000}
+  .screen{background:#0b1620;border-radius:16px;padding:16px;min-height:380px;display:flex;flex-direction:column;gap:12px}
+  .ce{border:1px dashed transparent;border-radius:8px;padding:6px;transition:.2s;position:relative}
+  .ce.hl{border-color:var(--cyan);background:rgba(52,224,212,.06)}
+  .ce-tag{position:absolute;top:-9px;right:6px;font-size:9px;background:var(--cyan);color:#04121a;padding:1px 6px;border-radius:10px;opacity:0;transition:.2s}
+  .ce.hl .ce-tag{opacity:1}
+  .r-img{height:90px;border-radius:8px;background:linear-gradient(120deg,#1d3a52,#13283a);display:flex;align-items:center;justify-content:center;color:var(--faint);font-size:10px}
+  .r-title{font-family:var(--disp);font-weight:700;font-size:18px;color:#fff}
+  .r-row{display:flex;gap:8px;align-items:center}
+  .r-btn{background:var(--amber);color:#1a1206;text-align:center;font-weight:700;border-radius:9px;padding:11px;font-size:13px}
+  .r-step{display:flex;align-items:center;gap:14px;background:#0e1c28;border-radius:9px;padding:8px 12px}
+  .r-step .v{font-family:var(--disp);font-weight:800;font-size:20px;color:var(--cyan);min-width:28px;text-align:center}
+  .r-step .pm{width:30px;height:30px;border-radius:7px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink);font-size:16px;cursor:pointer;user-select:none}
+  .r-sub{font-size:11px;color:var(--dim)}
+  .hint{font-size:11px;color:var(--faint);margin-top:14px;text-align:center}
+
+  /* ---------- update strategies ---------- */
+  .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+  .tab{font-family:var(--mono);font-size:12px;background:var(--panel);border:1px solid var(--line);color:var(--dim);border-radius:8px;padding:9px 14px;cursor:pointer;transition:.2s}
+  .tab:hover{color:var(--ink);border-color:var(--faint)}
+  .tab.active{background:var(--cyan);color:#04121a;border-color:var(--cyan);font-weight:700}
+  .panes{position:relative}
+  .pane{display:none;animation:fade .35s ease}
+  .pane.show{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .pane .grid2{display:grid;grid-template-columns:1.1fr 1fr;gap:18px;align-items:start}
+  .panel-box{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px}
+  .panel-box h4{font-family:var(--disp);font-size:15px;margin-bottom:8px;display:flex;gap:9px;align-items:center}
+  .badge{font-size:10px;padding:2px 8px;border-radius:20px;letter-spacing:.04em}
+  .b-no{background:rgba(126,231,135,.16);color:var(--green)} .b-rt{background:rgba(255,180,84,.16);color:var(--amber)}
+  .panel-box p{font-size:12px;color:var(--dim);margin-bottom:10px}
+  .miniflow{display:flex;flex-direction:column;gap:8px;font-size:11px}
+  .mf{display:flex;align-items:center;gap:9px;color:var(--dim)}
+  .mf .ic{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:12px;font-weight:700}
+  .ic.c{background:rgba(157,140,255,.18);color:var(--violet)} .ic.v{background:rgba(52,224,212,.16);color:var(--cyan)}
+  .ic.s{background:rgba(255,180,84,.16);color:var(--amber)} .ic.u{background:rgba(255,117,151,.16);color:var(--pink)}
+
+  /* decision table */
+  table{width:100%;border-collapse:collapse;margin-top:8px;font-size:12px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+  th{color:var(--faint);font-weight:500;font-size:10px;letter-spacing:.12em;text-transform:uppercase}
+  td:last-child{color:var(--dim)} tr:hover td{background:rgba(52,224,212,.04)}
+  .chip{font-size:10px;padding:2px 8px;border-radius:6px;background:var(--panel2);color:var(--cyan);white-space:nowrap}
+
+  footer{margin-top:70px;padding-top:24px;border-top:1px solid var(--line);color:var(--faint);font-size:11px;text-align:center}
+  @media(max-width:760px){
+    .arch,.map,.pane .grid2{grid-template-columns:1fr}
+    .stage{grid-template-columns:1fr 40px 1fr}
+    .device{max-width:100%}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="tag">Server-Driven UI · Arquitectura</div>
+    <h1>El <span class="b">servidor</span> dibuja,<br>el <span class="c">cliente</span> renderiza.</h1>
+    <p class="sub">Cómo funciona un SDUI con Ktor BFF + Kotlin Multiplatform: un solo árbol de componentes serializado viaja del backend al cliente, que lo interpreta y lo pinta en Compose — en Android e iOS con el mismo código.</p>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--amber)"></i>Contrato compartido</span>
+      <span><i class="dot" style="background:var(--cyan)"></i>Servidor Ktor</span>
+      <span><i class="dot" style="background:var(--violet)"></i>Cliente KMP</span>
+      <span><i class="dot" style="background:var(--green)"></i>Sin round-trip</span>
+    </div>
+  </header>
+
+  <!-- 1. ARQUITECTURA -->
+  <section>
+    <h2><span class="n">01</span> Tres módulos, un contrato</h2>
+    <p class="lede">La pieza que lo hace todo limpio es <code>:sdui-contract</code>: una jerarquía <code>sealed</code> de DTOs <code>@Serializable</code> que viven en <code>commonMain</code> y que <b>el servidor y el cliente importan literalmente la misma clase</b>. Sin codegen, sin drift de esquema — el compilador es el test de contrato.</p>
+    <div class="arch">
+      <div class="node contract">
+        <div class="role">MÓDULO COMPARTIDO · commonMain</div>
+        <h3>:sdui-contract <span class="pill">CORAZÓN</span></h3>
+        <div class="shareline"><span style="color:var(--cyan)">Servidor</span><span class="arr"></span>importa lo mismo<span class="arr"></span><span style="color:var(--violet)">Cliente</span></div>
+        <ul>
+          <li>sealed UiNode · column, row, text, image, button, lazyColumn…</li>
+          <li>sealed UiAction · navigate, setVar, network, submit…</li>
+          <li>UiModifier · padding, background, weight (tokens)</li>
+          <li>SduiEnvelope · schemaVersion + root + variables</li>
+          <li>SduiJson · la MISMA config de serialización en ambos lados</li>
+        </ul>
+      </div>
+      <div class="node">
+        <div class="role">BACKEND · JVM</div>
+        <h3 style="color:var(--cyan)">:server (Ktor BFF)</h3>
+        <ul>
+          <li>DSL de builders ensambla el árbol UiNode</li>
+          <li>Personalización, flags y A/B = ramas del builder</li>
+          <li>GET /screen/{id} → SduiEnvelope</li>
+          <li>POST /action → SduiPatch</li>
+          <li>Dueño del versionado y la capability negotiation</li>
+        </ul>
+      </div>
+      <div class="node">
+        <div class="role">FRONTEND · Android + iOS</div>
+        <h3 style="color:var(--violet)">:composeApp (KMP)</h3>
+        <ul>
+          <li>Ktor client (OkHttp / Darwin por plataforma)</li>
+          <li>Render(node) recursivo — when sellado, en commonMain</li>
+          <li>UiModifier.toCompose() mapea a Modifier</li>
+          <li>VariableStore reactivo + dispatcher de acciones</li>
+          <li>UnknownNode = nunca crashea</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. FLUJO -->
+  <section>
+    <h2><span class="n">02</span> El viaje de una pantalla</h2>
+    <p class="lede">Pulsa <b>reproducir</b> para seguir el flujo: el cliente pide una pantalla, el servidor ensambla y serializa el árbol, el JSON viaja, y el renderer recursivo lo convierte en composables. La misma secuencia ocurre en cada acción que vuelve al servidor.</p>
+    <div class="flow">
+      <div class="stage">
+        <div class="col cli">
+          <div class="col-h"><i class="dot" style="background:var(--violet)"></i><b>Cliente KMP</b></div>
+          <div class="step" data-s="0"><span class="t">1 · Solicita pantalla</span>GET /screen/home + header X-SDUI-Version</div>
+          <div class="step" data-s="5"><span class="t">6 · Deserializa</span>SduiJson → SduiEnvelope (mismo DTO del server)</div>
+          <div class="step" data-s="6"><span class="t">7 · Render recursivo</span>Render(root) recorre el árbol, emite composables</div>
+          <div class="step" data-s="7"><span class="t">8 · Pinta en Compose</span>Column { Text(); Image(); Button() } — Android e iOS</div>
+        </div>
+        <div class="pipe">
+          <svg viewBox="0 0 70 340" preserveAspectRatio="none">
+            <line x1="35" y1="0" x2="35" y2="340" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="4 5"/>
+          </svg>
+          <div class="pkt" id="pkt"></div>
+        </div>
+        <div class="col srv">
+          <div class="col-h"><i class="dot" style="background:var(--cyan)"></i><b>Servidor Ktor</b></div>
+          <div class="step" data-s="1"><span class="t">2 · Resuelve contexto</span>auth, usuario, feature flags, experimentos</div>
+          <div class="step" data-s="2"><span class="t">3 · Ensambla árbol</span>DSL: column { text(); if(promo) banner(); button() }</div>
+          <div class="step" data-s="3"><span class="t">4 · Serializa</span>SduiJson.encodeToString&lt;UiNode&gt;(root)</div>
+          <div class="step" data-s="4"><span class="t">5 · Responde</span>SduiEnvelope { schemaVersion, root, variables }</div>
+        </div>
+      </div>
+      <div class="ctrl">
+        <button class="play" id="play">▶ Reproducir flujo</button>
+        <span class="phase" id="phase">Listo. <b>8 pasos</b> · cliente → servidor → cliente</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. MAPPING -->
+  <section>
+    <h2><span class="n">03</span> De JSON a píxeles</h2>
+    <p class="lede">El árbol serializado y la UI renderizada son la misma estructura. Pasa el cursor por una línea del JSON (o por un elemento de la pantalla) para ver el mapeo nodo → composable.</p>
+    <div class="map">
+      <pre><code id="jsonblock"></code></pre>
+      <div>
+        <div class="device">
+          <div class="screen" id="screen">
+            <div class="ce" data-m="img"><span class="ce-tag">ImageNode</span><div class="r-img">image · hero.png</div></div>
+            <div class="ce" data-m="title"><span class="ce-tag">TextNode</span><div class="r-title">Hola, Johan</div></div>
+            <div class="ce" data-m="sub"><span class="ce-tag">TextNode</span><div class="r-sub">Tu pedido está en camino</div></div>
+            <div class="ce" data-m="step"><span class="ce-tag">RowNode + stepper</span>
+              <div class="r-step">
+                <div class="pm" id="dec">−</div>
+                <div class="v" id="qty">2</div>
+                <div class="pm" id="inc">+</div>
+                <div class="r-sub" style="margin-left:auto">unidades</div>
+              </div>
+            </div>
+            <div class="ce" data-m="btn"><span class="ce-tag">ButtonNode</span><div class="r-btn">Ver resumen</div></div>
+          </div>
+        </div>
+        <div class="hint">El <code>id</code> de cada nodo es su dirección: para patches dirigidos y para enlazar inputs a variables.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. UPDATE -->
+  <section>
+    <h2><span class="n">04</span> Actualizar datos dentro de un componente</h2>
+    <p class="lede">No todo cambio necesita volver al servidor. Hay cinco estrategias, según quién es dueño del dato. Elige una pestaña.</p>
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-p="0">Variables / binding</button>
+      <button class="tab" data-p="1">Patch dirigido</button>
+      <button class="tab" data-p="2">Input + submit</button>
+      <button class="tab" data-p="3">Optimista</button>
+      <button class="tab" data-p="4">Recarga total</button>
+    </div>
+    <div class="panes">
+      <!-- 0 variables -->
+      <div class="pane show">
+        <div class="grid2">
+          <div class="panel-box">
+            <h4>Variables / binding <span class="badge b-no">sin round-trip</span></h4>
+            <p>El cliente puede calcular el cambio solo. Las acciones <code>setVar / increment / toggle</code> mutan un store reactivo local; los nodos con <code>@{var}</code> recomponen al instante. Para contadores, filtros, totales calculables, abrir modales.</p>
+            <div class="miniflow">
+              <div class="mf"><span class="ic c">↦</span> usuario toca <code>+</code> en el stepper</div>
+              <div class="mf"><span class="ic v">x</span> increment("qty") → VariableStore</div>
+              <div class="mf"><span class="ic v">↻</span> nodos con <code>@{qty}</code> recomponen (texto, badge, total)</div>
+            </div>
+          </div>
+          <pre><code><span class="pn">// el árbol lee la variable, no un valor fijo</span>
+{ <span class="k">"type"</span>:<span class="s">"iconButton"</span>, <span class="k">"icon"</span>:<span class="s">"icon.plus"</span>,
+  <span class="k">"onClick"</span>:[ { <span class="k">"type"</span>:<span class="s">"increment"</span>,
+                <span class="k">"name"</span>:<span class="s">"qty"</span>, <span class="k">"max"</span>:<span class="nu">99</span> } ] }
+
+{ <span class="k">"type"</span>:<span class="s">"text"</span>, <span class="k">"text"</span>:<span class="s">"@{qty} unidades"</span> }
+{ <span class="k">"type"</span>:<span class="s">"badge"</span>, <span class="k">"count"</span>:<span class="s">"@{qty}"</span> }</code></pre>
+        </div>
+      </div>
+      <!-- 1 patch -->
+      <div class="pane">
+        <div class="grid2">
+          <div class="panel-box">
+            <h4>Patch dirigido <span class="badge b-rt">round-trip ligero</span></h4>
+            <p>El servidor es dueño del dato (precio, stock, validación). Una acción <code>network</code> viaja, y el server responde un <b>patch</b> con operaciones por <code>id</code>: <code>replace · updateProps · insert · remove · setVars</code>. El cliente solo recompone los subárboles tocados.</p>
+            <div class="miniflow">
+              <div class="mf"><span class="ic c">↦</span> POST /cart/update { qty }</div>
+              <div class="mf"><span class="ic s">⟳</span> server recalcula precio + total</div>
+              <div class="mf"><span class="ic v">⤿</span> patch: replace lineTotal-42 · setVars cartTotal</div>
+            </div>
+          </div>
+          <pre><code><span class="pn">// respuesta del server: solo lo que cambia</span>
+{ <span class="k">"schemaVersion"</span>:<span class="nu">1</span>, <span class="k">"changes"</span>:[
+  { <span class="k">"op"</span>:<span class="ty">"replace"</span>, <span class="k">"targetId"</span>:<span class="s">"lineTotal-42"</span>,
+    <span class="k">"node"</span>:{ <span class="k">"type"</span>:<span class="s">"text"</span>,
+            <span class="k">"text"</span>:<span class="s">"$ 12.990"</span> } },
+  { <span class="k">"op"</span>:<span class="ty">"setVars"</span>,
+    <span class="k">"values"</span>:{ <span class="k">"cartTotal"</span>:<span class="s">"$ 38.970"</span> } }
+]}</code></pre>
+        </div>
+      </div>
+      <!-- 2 input -->
+      <div class="pane">
+        <div class="grid2">
+          <div class="panel-box">
+            <h4>Input local + submit <span class="badge b-rt">diferido</span></h4>
+            <p>El input mantiene su valor con <code>bind</code> (UX fluida al instante) y dispara un <code>network</code> con <code>debounce</code> para que el server valide o reaccione. Búsqueda en vivo, validación de formularios.</p>
+            <div class="miniflow">
+              <div class="mf"><span class="ic c">⌨</span> usuario escribe → bind: queryVar (ya visible)</div>
+              <div class="mf"><span class="ic s">⏱</span> debounce 300ms → POST /search</div>
+              <div class="mf"><span class="ic v">⤿</span> patch: replace resultsList con hijos nuevos</div>
+            </div>
+          </div>
+          <pre><code>{ <span class="k">"type"</span>:<span class="s">"searchBar"</span>, <span class="k">"bind"</span>:<span class="s">"queryVar"</span>,
+  <span class="k">"debounceMs"</span>:<span class="nu">300</span>,
+  <span class="k">"onChange"</span>:[
+    { <span class="k">"type"</span>:<span class="s">"network"</span>,
+      <span class="k">"endpoint"</span>:<span class="s">"/search"</span>,
+      <span class="k">"payloadVars"</span>:[<span class="s">"queryVar"</span>] } ] }</code></pre>
+        </div>
+      </div>
+      <!-- 3 optimista -->
+      <div class="pane">
+        <div class="grid2">
+          <div class="panel-box">
+            <h4>Optimista + confirmación <span class="badge b-rt">background</span></h4>
+            <p>Para like / favorito / guardado: mutas la variable local <b>ya</b> (la UI cambia al toque) y disparas el <code>network</code> en paralelo. Si el server falla, el patch revierte la variable. Dos acciones en orden.</p>
+            <div class="miniflow">
+              <div class="mf"><span class="ic u">♥</span> toggle isFav → la UI ya cambió</div>
+              <div class="mf"><span class="ic c">↦</span> POST /items/42/favorite (en paralelo)</div>
+              <div class="mf"><span class="ic v">✓</span> ok: nada · error: patch revierte isFav</div>
+            </div>
+          </div>
+          <pre><code>{ <span class="k">"type"</span>:<span class="s">"iconButton"</span>, <span class="k">"icon"</span>:<span class="s">"icon.favorite"</span>,
+  <span class="k">"tintVar"</span>:<span class="s">"isFav"</span>,
+  <span class="k">"onClick"</span>:[
+    { <span class="k">"type"</span>:<span class="s">"toggle"</span>, <span class="k">"name"</span>:<span class="s">"isFav"</span> },
+    { <span class="k">"type"</span>:<span class="s">"network"</span>,
+      <span class="k">"endpoint"</span>:<span class="s">"/items/42/favorite"</span> } ] }</code></pre>
+        </div>
+      </div>
+      <!-- 4 recarga -->
+      <div class="pane">
+        <div class="grid2">
+          <div class="panel-box">
+            <h4>Recarga total <span class="badge b-rt">round-trip pesado</span></h4>
+            <p>El cliente vuelve a pedir <code>GET /screen/{id}</code> y reemplaza todo el árbol. Para navegación, pull-to-refresh o cambios <b>estructurales</b> grandes — no para un solo valor.</p>
+            <div class="miniflow">
+              <div class="mf"><span class="ic c">↻</span> pull-to-refresh</div>
+              <div class="mf"><span class="ic c">↦</span> GET /screen/home</div>
+              <div class="mf"><span class="ic v">⤿</span> SduiEnvelope nuevo → reemplaza root completo</div>
+            </div>
+          </div>
+          <pre><code><span class="pn">// regla de oro</span>
+<span class="pn">// cliente puede calcular →</span> variables
+<span class="pn">// server dueño del dato →</span> patch
+<span class="pn">// cambia la ESTRUCTURA →</span> recarga total</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <table>
+      <thead><tr><th>Caso</th><th>Estrategia</th><th>Round-trip</th></tr></thead>
+      <tbody>
+        <tr><td>Contador, toggle, filtro, total calculable, abrir modal</td><td><span class="chip">Variables / binding</span></td><td>No</td></tr>
+        <tr><td>Precio, stock, validación que decide el server</td><td><span class="chip">Patch dirigido</span></td><td>Sí · ligero</td></tr>
+        <tr><td>Escribir en input, búsqueda, validar con debounce</td><td><span class="chip">Input + submit</span></td><td>Sí · diferido</td></tr>
+        <tr><td>Like, favorito, guardado rápido</td><td><span class="chip">Optimista</span></td><td>Sí · background</td></tr>
+        <tr><td>Navegar, refrescar, cambio estructural</td><td><span class="chip">Recarga total</span></td><td>Sí · pesado</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer>SDUI · Ktor BFF + Kotlin Multiplatform · diagrama de referencia — un árbol, dos plataformas.</footer>
+</div>
+
+<script>
+/* ---------- flow player ---------- */
+(function(){
+  const steps=[...document.querySelectorAll('.step')];
+  const pkt=document.getElementById('pkt');
+  const phase=document.getElementById('phase');
+  const btn=document.getElementById('play');
+  const order=[0,1,2,3,4,5,6,7];
+  const labels=['Cliente solicita','Server: contexto','Server: ensambla','Server: serializa','Server: responde','Cliente: deserializa','Cliente: render','Cliente: pinta'];
+  // packet vertical position per step (matches the dashed line midpoints)
+  const ypos=[14,14,44,76,108,52,86,120];
+  // packet should be on the right (server) side for steps 1-4, left for 5-8
+  let t=null;
+  function reset(){steps.forEach(s=>s.classList.remove('on'));pkt.style.transform='translate(-50%,-50%) scale(0)';}
+  function run(){
+    if(t){clearInterval(t);}
+    reset(); let i=0;
+    btn.textContent='⏸ Reproduciendo…';
+    function tick(){
+      steps.forEach(s=>s.classList.remove('on'));
+      const s=steps[order[i]];
+      s.classList.add('on');
+      // move packet across pipe: right side (server) for i in 1..4, crossing at 0->1 and 4->5
+      const onServer = (i>=1 && i<=4);
+      const x = onServer? '40px' : (i===0? '-40px' : '-40px');
+      // simple: bounce packet to whichever side is active
+      const tx = onServer ? 26 : -26;
+      pkt.style.transform=`translate(calc(-50% + ${tx}px), -50%) scale(1)`;
+      pkt.style.background = onServer? 'var(--cyan)' : 'var(--violet)';
+      pkt.style.boxShadow = onServer? '0 0 16px var(--cyan)' : '0 0 16px var(--violet)';
+      phase.innerHTML='Paso <b>'+(i+1)+'/8</b> · '+labels[i];
+      i++;
+      if(i>=order.length){clearInterval(t);t=null;setTimeout(()=>{btn.textContent='▶ Reproducir de nuevo';},700);}
+    }
+    tick(); t=setInterval(tick,900);
+  }
+  btn.addEventListener('click',run);
+})();
+
+/* ---------- json <-> device mapping ---------- */
+(function(){
+  const json=[
+    {m:null,h:'{ '},
+    {m:'col',h:'  <span class="k">"type"</span>:<span class="s">"column"</span>, <span class="k">"id"</span>:<span class="s">"main"</span>, <span class="k">"spacing"</span>:<span class="nu">12</span>,'},
+    {m:'col',h:'  <span class="k">"children"</span>:['},
+    {m:'img',h:'    { <span class="k">"type"</span>:<span class="ty">"image"</span>, <span class="k">"url"</span>:<span class="s">"hero.png"</span> },'},
+    {m:'title',h:'    { <span class="k">"type"</span>:<span class="ty">"text"</span>, <span class="k">"text"</span>:<span class="s">"Hola, @{userName}"</span>, <span class="k">"style"</span>:<span class="s">"type.title"</span> },'},
+    {m:'sub',h:'    { <span class="k">"type"</span>:<span class="ty">"text"</span>, <span class="k">"text"</span>:<span class="s">"Tu pedido está en camino"</span> },'},
+    {m:'step',h:'    { <span class="k">"type"</span>:<span class="ty">"row"</span>, <span class="k">"id"</span>:<span class="s">"qtyrow"</span>, <span class="k">"children"</span>:['},
+    {m:'step',h:'        { <span class="k">"type"</span>:<span class="ty">"iconButton"</span>, <span class="k">"icon"</span>:<span class="s">"icon.minus"</span> },'},
+    {m:'step',h:'        { <span class="k">"type"</span>:<span class="ty">"text"</span>, <span class="k">"text"</span>:<span class="s">"@{qty}"</span> },'},
+    {m:'step',h:'        { <span class="k">"type"</span>:<span class="ty">"iconButton"</span>, <span class="k">"icon"</span>:<span class="s">"icon.plus"</span> } ] },'},
+    {m:'btn',h:'    { <span class="k">"type"</span>:<span class="ty">"button"</span>, <span class="k">"label"</span>:<span class="s">"Ver resumen"</span>,'},
+    {m:'btn',h:'      <span class="k">"onClick"</span>:[ { <span class="k">"type"</span>:<span class="s">"navigate"</span>, <span class="k">"route"</span>:<span class="s">"summary"</span> } ] }'},
+    {m:null,h:'  ] }'}
+  ];
+  const block=document.getElementById('jsonblock');
+  block.innerHTML=json.map((l,i)=>`<span class="ln" data-m="${l.m||''}">${l.h}</span>`).join('\n');
+  const lns=[...block.querySelectorAll('.ln')];
+  const ces=[...document.querySelectorAll('.ce')];
+  function setHL(m,on){
+    lns.forEach(l=>l.classList.toggle('hl', on && l.dataset.m===m));
+    ces.forEach(c=>c.classList.toggle('hl', on && c.dataset.m===m));
+  }
+  lns.forEach(l=>{ if(!l.dataset.m) return;
+    l.addEventListener('mouseenter',()=>setHL(l.dataset.m,true));
+    l.addEventListener('mouseleave',()=>setHL(l.dataset.m,false));
+  });
+  ces.forEach(c=>{
+    c.addEventListener('mouseenter',()=>setHL(c.dataset.m,true));
+    c.addEventListener('mouseleave',()=>setHL(c.dataset.m,false));
+  });
+
+  /* live stepper = variables/binding demo */
+  let qty=2;
+  const qEl=document.getElementById('qty');
+  const dec=document.getElementById('dec'), inc=document.getElementById('inc');
+  function flash(){qEl.style.color='var(--amber)';setTimeout(()=>qEl.style.color='var(--cyan)',180);}
+  inc.addEventListener('click',()=>{ if(qty<99){qty++;qEl.textContent=qty;flash();} });
+  dec.addEventListener('click',()=>{ if(qty>1){qty--;qEl.textContent=qty;flash();} });
+})();
+
+/* ---------- update strategy tabs ---------- */
+(function(){
+  const tabs=[...document.querySelectorAll('.tab')];
+  const panes=[...document.querySelectorAll('.pane')];
+  tabs.forEach(t=>t.addEventListener('click',()=>{
+    tabs.forEach(x=>x.classList.remove('active'));
+    panes.forEach(x=>x.classList.remove('show'));
+    t.classList.add('active');
+    panes[+t.dataset.p].classList.add('show');
+  }));
+})();
+</script>
+</body>
+</html>

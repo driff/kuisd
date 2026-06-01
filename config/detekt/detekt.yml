@@ -1,0 +1,13 @@
+# Detekt 2.0.0-alpha.3 config.
+#
+# NOTE: the Clean Architecture boundary rule (domain/ may not import data/ or
+# presentation/) is intentionally NOT enforced here yet. detekt's stock
+# `style:ForbiddenImport` rule is a GLOBAL ban — it fires on legitimate imports
+# from app hosts (e.g. MainActivity importing presentation.*). Proper per-package
+# scoping needs either:
+#   1. A custom detekt rule plugin keyed on source path
+#   2. ArchUnit-style assertions in tests
+#   3. Splitting :shared into per-layer Gradle modules
+#
+# Tracked as a M1 task. For now detekt runs with default rules, catching basic
+# code-smell issues. ktlint enforces formatting.
