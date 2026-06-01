@@ -6,8 +6,11 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
+// Versión única de la toolchain para este módulo (evita drift entre jvmToolchain y el javaHome del run).
+val jdkVersion = 25
+
 kotlin {
-    jvmToolchain(25)
+    jvmToolchain(jdkVersion)
 }
 
 dependencies {
@@ -19,21 +22,18 @@ dependencies {
 }
 
 // El `run`/empaquetado de Compose Desktop usa por defecto el JVM del daemon Gradle (Java 21, fijado
-// en gradle/gradle-daemon-jvm.properties), pero las clases se compilan con la toolchain 25 → mismatch
-// (UnsupportedClassVersionError). Apuntamos `javaHome` a la JDK 25 resuelta por la toolchain service.
-val runtimeJdk25: String =
+// en gradle/gradle-daemon-jvm.properties), pero las clases se compilan con la toolchain → mismatch
+// (UnsupportedClassVersionError). Apuntamos `javaHome` a la JDK de la toolchain. Provider lazy para
+// no resolver la toolchain a nivel de script (configuration cache); el .get() se difiere al bloque.
+val runtimeJdkHome =
     javaToolchains
-        .launcherFor { languageVersion.set(JavaLanguageVersion.of(25)) }
-        .get()
-        .metadata
-        .installationPath
-        .asFile
-        .absolutePath
+        .launcherFor { languageVersion.set(JavaLanguageVersion.of(jdkVersion)) }
+        .map { it.metadata.installationPath.asFile.absolutePath }
 
 compose.desktop {
     application {
         mainClass = "dev.kuisd.desktop.MainKt"
-        javaHome = runtimeJdk25
+        javaHome = runtimeJdkHome.get()
         nativeDistributions {
             targetFormats(
                 org.jetbrains.compose.desktop.application.dsl.TargetFormat.Dmg,
