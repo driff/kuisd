@@ -101,11 +101,32 @@ class ApplicationTest {
         assertEquals("counter", envelope.screenId)
         assertEquals(JsonPrimitive(0), envelope.variables["count"])
         assertEquals(JsonPrimitive(false), envelope.variables["flag"])
+        assertEquals(JsonPrimitive(""), envelope.variables["name"])
         assertTrue(
             envelope.root.children.any { node ->
                 node.type == "text" && node.props["text"]?.jsonPrimitive?.content == "\$count"
             },
             "esperaba un text con props.text==\"\$count\"",
+        )
+        assertTrue(
+            envelope.root.children.any { node ->
+                node.type == "textField" && node.props["bind"]?.jsonPrimitive?.content == "count"
+            },
+            "esperaba un textField(bind=count)",
+        )
+        assertTrue(
+            envelope.root.children.any { node ->
+                node.type == "textField" && node.props["bind"]?.jsonPrimitive?.content == "name"
+            },
+            "esperaba un textField(bind=name)",
+        )
+        val greeting = envelope.root.children.firstOrNull { it.type == "row" && it.id == "greeting" }
+        assertNotNull(greeting, "esperaba un row id==greeting")
+        assertTrue(
+            greeting.children.any { c ->
+                c.type == "text" && c.props["text"]?.jsonPrimitive?.content == "\$name"
+            },
+            "esperaba un text con props.text==\"\$name\" dentro del greeting",
         )
     }
 
