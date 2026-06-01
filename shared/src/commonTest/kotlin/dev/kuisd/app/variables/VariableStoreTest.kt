@@ -13,12 +13,32 @@ class VariableStoreTest {
     }
 
     @Test
-    fun seed_replaces_the_whole_map() {
+    fun seed_preserves_existing_values() {
         val store = VariableStore()
         store.set("a", JsonPrimitive(1))
-        store.seed(mapOf("b" to JsonPrimitive(2)))
-        assertEquals(null, store.vars["a"])
+        store.seed(mapOf("a" to JsonPrimitive(99), "b" to JsonPrimitive(2)))
+        // 'a' ya existía -> se preserva; 'b' es nueva -> se añade.
+        assertEquals(JsonPrimitive(1), store.vars["a"])
         assertEquals(JsonPrimitive(2), store.vars["b"])
+    }
+
+    @Test
+    fun seed_on_empty_store_adds_all_keys() {
+        val store = VariableStore()
+        store.seed(mapOf("a" to JsonPrimitive(1), "b" to JsonPrimitive(2)))
+        assertEquals(JsonPrimitive(1), store.vars["a"])
+        assertEquals(JsonPrimitive(2), store.vars["b"])
+    }
+
+    @Test
+    fun re_seed_with_typed_user_edit_does_not_overwrite() {
+        // Simula: envelope sembró count=0, usuario tecleó "7" (SetVar -> "7"), envelope se
+        // re-emite (LaunchedEffect dispara seed otra vez) -> el "7" del usuario se preserva.
+        val store = VariableStore()
+        store.seed(mapOf("count" to JsonPrimitive(0)))
+        store.set("count", JsonPrimitive("7"))
+        store.seed(mapOf("count" to JsonPrimitive(0)))
+        assertEquals(JsonPrimitive("7"), store.vars["count"])
     }
 
     @Test

@@ -23,9 +23,27 @@ class VariableStore {
     /** Vista de solo lectura observada por Compose: el motor lee bindings por aquí. */
     val scope: VariableScope = VariableScope { name -> vars[name] }
 
-    /** Re-siembra el mapa entero al cargar el envelope (HU-3.1). */
+    /**
+     * Siembra idempotente (merge no-overwrite) al cargar el envelope (HU-3.1 / spec 007 HU-6.5).
+     *
+     * - Claves nuevas: se añaden.
+     * - Claves ya presentes: **se preservan** (no se sobrescribe el valor actual).
+     *
+     * Defensa contra re-emisión del envelope dentro de la misma entrada del back stack: protege a
+     * los nodos que leen `$bind` de rebotar al valor inicial mientras el usuario edita esa misma
+     * variable. La 1ª siembra (mapa vacío) se comporta igual que la versión anterior.
+     */
     fun seed(initial: Map<String, JsonElement>) {
-        vars = initial
+        val current = vars
+        var changed = false
+        val merged = current.toMutableMap()
+        initial.forEach { (k, v) ->
+            if (k !in current) {
+                merged[k] = v
+                changed = true
+            }
+        }
+        if (changed) vars = merged.toMap()
     }
 
     /** Fija [name] a [value] (HU-3.2). */

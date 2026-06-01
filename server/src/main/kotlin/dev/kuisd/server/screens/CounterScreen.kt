@@ -27,6 +27,7 @@ object CounterScreen : ScreenBuilder {
         variables = mapOf(
             "count" to JsonPrimitive(0),
             "flag" to JsonPrimitive(false),
+            "name" to JsonPrimitive(""),
         ),
         root = SduiNode(
             type = "column",
@@ -39,6 +40,9 @@ object CounterScreen : ScreenBuilder {
                 titleNode(),
                 bindingTextNode(id = "count-value", binding = "\$count"),
                 bindingTextNode(id = "flag-value", binding = "\$flag"),
+                textFieldNode(id = "count-input", bind = "count", placeholder = "Escribe un número"),
+                textFieldNode(id = "name-input", bind = "name", placeholder = "Tu nombre"),
+                greetingRow(),
                 buttonNode("inc", "+1", Increment("count", by = 1, min = MIN_COUNT, max = MAX_COUNT)),
                 buttonNode("dec", "-1", Increment("count", by = -1, min = MIN_COUNT, max = MAX_COUNT)),
                 buttonNode("toggle", "Toggle", Toggle("flag")),
@@ -69,5 +73,33 @@ object CounterScreen : ScreenBuilder {
         id = id,
         props = JsonObject(mapOf("label" to JsonPrimitive(label))),
         actions = mapOf("onClick" to listOf(action)),
+    )
+
+    private fun textFieldNode(id: String, bind: String, placeholder: String): SduiNode = SduiNode(
+        type = "textField",
+        id = id,
+        props = JsonObject(
+            mapOf(
+                "bind" to JsonPrimitive(bind),
+                "placeholder" to JsonPrimitive(placeholder),
+            ),
+        ),
+    )
+
+    private fun greetingRow(): SduiNode = SduiNode(
+        type = "row",
+        id = "greeting",
+        children = listOf(
+            SduiNode(
+                type = "text",
+                id = "hello-literal",
+                props = JsonObject(mapOf("text" to JsonPrimitive("Hola, "))),
+            ),
+            SduiNode(
+                type = "text",
+                id = "hello-name",
+                props = JsonObject(mapOf("text" to JsonPrimitive("\$name"))),
+            ),
+        ),
     )
 }
