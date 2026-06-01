@@ -1,6 +1,6 @@
 # Requisitos — Contenedores + Theme extensible + `UiModifier` aplicado
 
-> Spec ID: 008 · Estado: draft · Fecha: 2026-06-01
+> Spec ID: 008 · Estado: approved · Fecha: 2026-06-01
 
 ## Resumen
 Hasta ahora el motor solo renderiza primitivos (`column`/`row`/`text`/`button`/`textField` + `badge`

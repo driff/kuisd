@@ -1,6 +1,6 @@
 # Diseño — Contenedores + Theme extensible + `UiModifier` aplicado
 
-> Spec ID: 008 · Estado: draft · Trazabilidad: ./requirements.md
+> Spec ID: 008 · Estado: approved · Trazabilidad: ./requirements.md
 
 ## Enfoque
 Cuatro piezas atómicas que se acoplan:

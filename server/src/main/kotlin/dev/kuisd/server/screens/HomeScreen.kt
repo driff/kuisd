@@ -46,6 +46,12 @@ object HomeScreen : ScreenBuilder {
                     props = JsonObject(mapOf("label" to JsonPrimitive("Contador"))),
                     actions = mapOf("onClick" to listOf(Navigate(route = "counter"))),
                 ),
+                SduiNode(
+                    type = "button",
+                    id = "feed",
+                    props = JsonObject(mapOf("label" to JsonPrimitive("Feed"))),
+                    actions = mapOf("onClick" to listOf(Navigate(route = "feed"))),
+                ),
             ),
         ),
     )

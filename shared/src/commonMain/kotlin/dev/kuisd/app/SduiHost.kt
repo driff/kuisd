@@ -14,13 +14,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import dev.kuisd.app.components.appRegistry
 import dev.kuisd.app.data.KtorScreenSource
+import dev.kuisd.app.icons.appIconsOverride
 import dev.kuisd.app.nav.NavActionHandler
 import dev.kuisd.app.nav.NavBackStack
+import dev.kuisd.app.theme.rememberAppTheme
 import dev.kuisd.app.variables.VariableActionHandler
 import dev.kuisd.app.variables.VariableStore
 import dev.kuisd.sdui.LocalComponentRegistry
 import dev.kuisd.sdui.LocalSduiActionHandler
 import dev.kuisd.sdui.LocalVariables
+import dev.kuisd.sdui.icons.DefaultIconRegistry
+import dev.kuisd.sdui.icons.LocalIconRegistry
+import dev.kuisd.sdui.theme.LocalKuisdTheme
 
 /**
  * Host de navegación SDUI: dueño del [NavBackStack] y de un único `KtorScreenSource` compartido (HU-4.2).
@@ -50,6 +55,8 @@ fun SduiHost(
             ),
         )
     }
+    val theme = rememberAppTheme()
+    val icons = remember { DefaultIconRegistry + appIconsOverride() }
 
     Scaffold(
         modifier = modifier,
@@ -68,6 +75,8 @@ fun SduiHost(
             LocalSduiActionHandler provides handler,
             LocalComponentRegistry provides appRegistry,
             LocalVariables provides store.scope,
+            LocalKuisdTheme provides theme,
+            LocalIconRegistry provides icons,
         ) {
             key(current.id) {
                 SduiScreen(

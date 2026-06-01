@@ -23,6 +23,16 @@ value class RadiusToken(
     val ref: String,
 )
 
+@Serializable @JvmInline
+value class ElevationToken(
+    val ref: String,
+)
+
+@Serializable @JvmInline
+value class AlignmentToken(
+    val ref: String,
+)
+
 object Tokens {
     object Color {
         val Primary = ColorToken("color.primary")
@@ -51,7 +61,28 @@ object Tokens {
 
     object Radius {
         val None = RadiusToken("radius.none")
+        val Sm = RadiusToken("radius.sm")
+        val Md = RadiusToken("radius.md")
+        val Lg = RadiusToken("radius.lg")
+        val Xl = RadiusToken("radius.xl")
         val Card = RadiusToken("radius.card")
         val Pill = RadiusToken("radius.pill")
+    }
+
+    object Elevation {
+        val None = ElevationToken("elevation.none")
+        val Sm = ElevationToken("elevation.sm")
+        val Md = ElevationToken("elevation.md")
+        val Lg = ElevationToken("elevation.lg")
+    }
+
+    object Alignment {
+        val Start = AlignmentToken("alignment.start")
+        val Center = AlignmentToken("alignment.center")
+        val End = AlignmentToken("alignment.end")
+        val Top = AlignmentToken("alignment.top")
+        val Bottom = AlignmentToken("alignment.bottom")
+        val CenterHorizontally = AlignmentToken("alignment.centerH")
+        val CenterVertically = AlignmentToken("alignment.centerV")
     }
 }

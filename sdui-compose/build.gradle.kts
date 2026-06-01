@@ -35,6 +35,7 @@ kotlin {
             api(libs.runtime)
             api(libs.foundation)
             api(libs.material3)
+            api(libs.material.icons.extended)
             api(libs.ui)
         }
         commonTest.dependencies {
