@@ -143,7 +143,8 @@ private fun RenderScope.BottomBarRenderer(p: BottomBarProps, baseModifier: Modif
     val selectedValue = p.selectedBind?.let { vars.get(it)?.asDisplayString() }
     NavigationBar(modifier = baseModifier) {
         node.children.forEach { child ->
-            val item = decodeOrNull<BottomBarItemProps>(child) ?: return@forEach  // no-item → se ignora
+            if (child.type != "bottomBarItem") return@forEach                     // guard por type (HU-3.2)
+            val item = decodeOrNull<BottomBarItemProps>(child) ?: return@forEach  // props inválidas → se ignora
             NavigationBarItem(
                 selected = isItemSelected(selectedValue, item.value),
                 onClick = { handler.handle(child.actions["onClick"].orEmpty()) },

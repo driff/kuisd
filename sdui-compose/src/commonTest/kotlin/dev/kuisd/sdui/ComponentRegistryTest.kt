@@ -73,4 +73,13 @@ class ComponentRegistryTest {
         }.getOrNull()
         assertNull(props)
     }
+
+    @Test
+    fun corepack_registers_scaffold_components() {
+        assertNotNull(CorePack.rendererFor("scaffold"))
+        assertNotNull(CorePack.rendererFor("topAppBar"))
+        assertNotNull(CorePack.rendererFor("bottomBar"))
+        // `bottomBarItem` no es componente standalone: se decodifica dentro de `bottomBar`.
+        assertNull(CorePack.rendererFor("bottomBarItem"))
+    }
 }

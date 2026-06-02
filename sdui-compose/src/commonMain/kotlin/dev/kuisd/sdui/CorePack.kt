@@ -1,8 +1,10 @@
 package dev.kuisd.sdui
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -19,9 +21,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -123,7 +129,32 @@ data class IconButtonProps(
     val contentDescription: String? = null,
 )
 
-/** Catálogo base del motor (specs 001/003/004/005/007 + 008). */
+/** Sin campos propios: los slots vienen de los children y la apariencia del `UiModifier` (HU-1). */
+@Serializable
+class ScaffoldProps
+
+/** Barra superior: título bindable e icono de navegación opcional (HU-2). */
+@Serializable
+data class TopAppBarProps(
+    val title: String = "",
+    val navigationIcon: String? = null,
+)
+
+/** Barra inferior: `selectedBind` = nombre DIRECTO de la variable de selección (HU-3). */
+@Serializable
+data class BottomBarProps(
+    val selectedBind: String? = null,
+)
+
+/** Ítem de `bottomBar`; sus props se decodifican dentro del renderer (no es componente standalone). */
+@Serializable
+data class BottomBarItemProps(
+    val icon: String = "",
+    val label: String = "",
+    val value: String = "",
+)
+
+/** Catálogo base del motor (specs 001/003/004/005/007 + 008 + 010). */
 val CorePack: ComponentRegistry = componentRegistry {
     register(sduiComponent<ColumnProps>("column")) {
         Column(
@@ -172,6 +203,9 @@ val CorePack: ComponentRegistry = componentRegistry {
     register(sduiComponent<IconButtonProps>("iconButton")) { p ->
         IconButtonRenderer(p, modifier, node.actions["onClick"].orEmpty())
     }
+    register(sduiComponent<ScaffoldProps>("scaffold")) { ScaffoldRenderer(modifier) }
+    register(sduiComponent<TopAppBarProps>("topAppBar")) { p -> TopAppBarRenderer(p, modifier) }
+    register(sduiComponent<BottomBarProps>("bottomBar")) { p -> BottomBarRenderer(p, modifier) }
 }
 
 /**
@@ -310,5 +344,79 @@ private fun RenderScope.IconButtonRenderer(
             contentDescription = p.contentDescription,
             tint = theme.resolveColorOrNull(p.tint) ?: LocalContentColor.current,
         )
+    }
+}
+
+/**
+ * Renderer del `scaffold`: monta `material3.Scaffold` con los slots resueltos por `type` (HU-1).
+ * El `innerPadding` se aplica a un `Box` envoltorio del content (RenderNode no acepta modifier);
+ * cada child conserva su propio `UiModifier`. Barras ausentes ⇒ lambda vacía (slot omitido).
+ */
+@Composable
+private fun RenderScope.ScaffoldRenderer(baseModifier: Modifier) {
+    val slots = remember(node.children) { partitionScaffoldSlots(node.children) }
+    Scaffold(
+        modifier = baseModifier,
+        topBar = { slots.topBar?.let { RenderNode(it) } },
+        bottomBar = { slots.bottomBar?.let { RenderNode(it) } },
+    ) { innerPadding ->
+        Box(Modifier.padding(innerPadding)) {
+            slots.content.forEach { RenderNode(it) }
+        }
+    }
+}
+
+/**
+ * Renderer del `topAppBar` (HU-2): título bindable, icono de navegación SOLO si hay
+ * `onNavigationClick`, y children como acciones a la derecha. `@OptIn` acotado al renderer.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RenderScope.TopAppBarRenderer(p: TopAppBarProps, baseModifier: Modifier) {
+    val handler = LocalSduiActionHandler.current
+    val navActions = node.actions["onNavigationClick"].orEmpty()
+    TopAppBar(
+        modifier = baseModifier,
+        title = { Text(bind(p.title)) },
+        navigationIcon = {
+            if (navActions.isNotEmpty()) {
+                val vector = LocalIconRegistry.current.get(p.navigationIcon.orEmpty())
+                    ?: Icons.AutoMirrored.Outlined.HelpOutline
+                IconButton(onClick = { handler.handle(navActions) }) {
+                    Icon(vector, contentDescription = null)
+                }
+            }
+        },
+        actions = { renderChildren() },
+    )
+}
+
+/**
+ * Renderer del `bottomBar` (HU-3): un `NavigationBarItem` por child decodificable a
+ * `BottomBarItemProps`; los no-ítem se ignoran. `selectedBind` se lee reactivamente del store
+ * (005) y marca seleccionado el ítem cuyo `value` coincide.
+ */
+@Composable
+private fun RenderScope.BottomBarRenderer(p: BottomBarProps, baseModifier: Modifier) {
+    val handler = LocalSduiActionHandler.current
+    val vars = LocalVariables.current
+    val selectedValue = p.selectedBind?.let { vars.get(it)?.asDisplayString() }
+    NavigationBar(modifier = baseModifier) {
+        node.children.forEach { child ->
+            // Guard por `type`: con `ignoreUnknownKeys=true` cualquier child decodificaría a props
+            // por defecto; solo los `bottomBarItem` deben volverse ítems (HU-3.2/4.2).
+            if (child.type != "bottomBarItem") return@forEach
+            val item = decodeOrNull<BottomBarItemProps>(child) ?: return@forEach
+            NavigationBarItem(
+                selected = isItemSelected(selectedValue, item.value),
+                onClick = { handler.handle(child.actions["onClick"].orEmpty()) },
+                icon = {
+                    val v = LocalIconRegistry.current.get(item.icon)
+                        ?: Icons.AutoMirrored.Outlined.HelpOutline
+                    Icon(v, contentDescription = null)
+                },
+                label = { Text(bind(item.label)) },
+            )
+        }
     }
 }

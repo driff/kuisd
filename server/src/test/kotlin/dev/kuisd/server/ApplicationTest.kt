@@ -6,6 +6,7 @@ import dev.kuisd.sdui.core.FireEndpoint
 import dev.kuisd.sdui.core.KUISD_VERSION_HEADER
 import dev.kuisd.sdui.core.ProblemDetail
 import dev.kuisd.sdui.core.SduiEnvelope
+import dev.kuisd.sdui.core.SduiNode
 import dev.kuisd.sdui.core.SetVar
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -24,6 +25,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
+/** Busca un nodo por `id` en profundidad (la pantalla `home` anida los botones bajo `scaffold`). */
+private fun SduiNode.findById(id: String): SduiNode? =
+    if (this.id == id) this else children.firstNotNullOfOrNull { it.findById(id) }
+
 class ApplicationTest {
     @Test
     fun health_endpoint_returns_ok() = testApplication {
@@ -41,7 +46,15 @@ class ApplicationTest {
 
         val envelope = DefaultSduiJson.decodeFromString(SduiEnvelope.serializer(), response.bodyAsText())
         assertEquals("home", envelope.screenId)
-        assertEquals("column", envelope.root.type)
+        assertEquals("scaffold", envelope.root.type)
+        assertTrue(
+            envelope.root.children.any { it.type == "topAppBar" },
+            "esperaba un topAppBar en el scaffold de home",
+        )
+        assertTrue(
+            envelope.root.children.any { it.type == "bottomBar" },
+            "esperaba un bottomBar en el scaffold de home",
+        )
     }
 
     @Test
@@ -174,7 +187,7 @@ class ApplicationTest {
         application { module() }
         val response = client.get("/screen/home")
         val envelope = DefaultSduiJson.decodeFromString(SduiEnvelope.serializer(), response.bodyAsText())
-        val feedButton = envelope.root.children.firstOrNull { it.id == "feed" }
+        val feedButton = envelope.root.findById("feed")
         assertNotNull(feedButton, "esperaba un botón id=feed en home")
         assertEquals("button", feedButton.type)
     }
@@ -234,7 +247,7 @@ class ApplicationTest {
         application { module() }
         val response = client.get("/screen/home")
         val envelope = DefaultSduiJson.decodeFromString(SduiEnvelope.serializer(), response.bodyAsText())
-        assertNotNull(envelope.root.children.firstOrNull { it.id == "form" })
+        assertNotNull(envelope.root.findById("form"))
     }
 
     @Test
