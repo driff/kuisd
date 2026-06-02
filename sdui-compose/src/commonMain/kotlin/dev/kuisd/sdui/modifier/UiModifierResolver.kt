@@ -20,6 +20,11 @@ import dev.kuisd.sdui.theme.KuisdTheme
  * `fillMaxWidth` → `fillMaxHeight` → `width` → `height` → `padding`
  * → `clip(cornerRadius)` + `background(background, cornerRadius)`
  *
+ * Nota sobre `background` sin `cornerRadius`: si hay `background` pero el `cornerRadius` no
+ * resuelve (o no se declara), se pinta `background(color, RectangleShape)` **sin** `clip` previo
+ * — es un rectángulo plano y el contenido NO se recorta a una forma. Para recortar, declara
+ * también `cornerRadius`.
+ *
  * Campos no aplicados aquí (por requerir contexto de scope o wrappers especiales):
  *  - `weight`     → requiere `RowScope`/`ColumnScope`; ignorado en MVP (HU-3.9).
  *  - `elevation`  → requiere `Surface`; lo consumen `surface`/`card` directamente (HU-3.8).

@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
@@ -31,7 +30,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.unit.dp
 import dev.kuisd.sdui.core.ColorToken
 import dev.kuisd.sdui.core.ElevationToken
@@ -236,22 +234,26 @@ private fun RenderScope.CardRenderer(
     content: @Composable () -> Unit,
 ) {
     val theme = LocalKuisdTheme.current
-    val shape: Shape = theme.resolveShapeOrNull(p.shape)
-        ?: theme.resolveShapeOrNull(Tokens.Radius.Card)
-        ?: RoundedCornerShape(12.dp)
+    // Fallbacks neutros = defaults de Material3 (CardDefaults), NO literales: el motor no
+    // materializa números `dp` propios. Con `KuisdTheme.Empty` el card cae a su apariencia
+    // Material por defecto (degradación visible, no crash).
+    val shape = theme.resolveShapeOrNull(p.shape) ?: theme.resolveShapeOrNull(Tokens.Radius.Card)
     val containerColor = theme.resolveColorOrNull(p.background)
-    val elevation = theme.resolveElevationOrNull(p.elevation)
+    val elevationDp = theme.resolveElevationOrNull(p.elevation)
         ?: theme.resolveElevationOrNull(Tokens.Elevation.Sm)
-        ?: 1.dp
     Card(
         modifier = baseModifier,
-        shape = shape,
+        shape = shape ?: CardDefaults.shape,
         colors = if (containerColor != null) {
             CardDefaults.cardColors(containerColor = containerColor)
         } else {
             CardDefaults.cardColors()
         },
-        elevation = CardDefaults.cardElevation(defaultElevation = elevation),
+        elevation = if (elevationDp != null) {
+            CardDefaults.cardElevation(defaultElevation = elevationDp)
+        } else {
+            CardDefaults.cardElevation()
+        },
     ) { content() }
 }
 
@@ -268,8 +270,9 @@ private fun RenderScope.DividerRenderer(p: DividerProps, baseModifier: Modifier)
 @Composable
 private fun RenderScope.SpacerRenderer(p: SpacerProps, baseModifier: Modifier) {
     val theme = LocalKuisdTheme.current
-    val size = theme.resolveSpaceOrNull(p.size) ?: 8.dp
-    Spacer(modifier = baseModifier.then(Modifier.size(size)))
+    // Sin token resuelto → 0.dp (neutro, sin número mágico). Un spacer sin `size` no separa.
+    val size = theme.resolveSpaceOrNull(p.size) ?: 0.dp
+    Spacer(modifier = baseModifier.size(size))
 }
 
 @Composable
@@ -277,11 +280,13 @@ private fun RenderScope.IconRenderer(p: IconProps, baseModifier: Modifier) {
     val theme = LocalKuisdTheme.current
     val registry = LocalIconRegistry.current
     val vector = registry.get(p.name) ?: Icons.AutoMirrored.Outlined.HelpOutline
-    val size = theme.resolveSpaceOrNull(p.size) ?: 24.dp
+    // Sin token de tamaño → no se aplica modifier de size: el Icon usa su tamaño intrínseco
+    // (Material default), evitando materializar un `dp` literal en el motor.
+    val sizeModifier = theme.resolveSpaceOrNull(p.size)?.let { Modifier.size(it) } ?: Modifier
     Icon(
         imageVector = vector,
         contentDescription = p.contentDescription,
-        modifier = baseModifier.then(Modifier.size(size)),
+        modifier = baseModifier.then(sizeModifier),
         tint = theme.resolveColorOrNull(p.tint) ?: LocalContentColor.current,
     )
 }

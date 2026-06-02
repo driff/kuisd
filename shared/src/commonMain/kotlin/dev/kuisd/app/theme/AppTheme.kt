@@ -17,11 +17,15 @@ import dev.kuisd.sdui.theme.rememberMaterialKuisdTheme
 internal fun rememberAppTheme(): KuisdTheme {
     val base = rememberMaterialKuisdTheme()
     return remember(base) {
-        val xlShape = base.resolveShapeOrNull(Tokens.Radius.Xl)
-            ?: error("Tokens.Radius.Xl debe estar mapeado en el theme base (spec 008)")
-        val override = kuisdTheme {
-            shape(Tokens.Radius.Card, xlShape)
+        // Invariante: el base es `rememberMaterialKuisdTheme()`, que SIEMPRE mapea Radius.Xl
+        // (spec 008). El fallback a `Card` cubre el caso teórico de un base custom incompleto
+        // sin romper el render (degradación: el card mantiene su shape original).
+        val cardShape = base.resolveShapeOrNull(Tokens.Radius.Xl)
+            ?: base.resolveShapeOrNull(Tokens.Radius.Card)
+        if (cardShape == null) {
+            base
+        } else {
+            base + kuisdTheme { shape(Tokens.Radius.Card, cardShape) }
         }
-        base + override
     }
 }

@@ -44,14 +44,10 @@ class UiModifierResolverTest {
 
     @Test
     fun unresolved_token_in_theme_does_not_crash() {
-        val emptyTheme = KuisdTheme.Empty
-        // padding referencia un token que no está en el theme → se ignora silenciosamente
+        // padding referencia un token que no está en el Empty theme → resuelve a 0.dp en cada
+        // lado; el `.padding(...)` se aplica igual (sin crash) y produce un Modifier no-identidad.
         val result = UiModifier(padding = PaddingTokens(l = Tokens.Space.Md))
-            .toModifier(emptyTheme)
-
-        // El .padding(0.dp, 0.dp, 0.dp, 0.dp) sí se aplica (los nulos colapsan a 0); confirma
-        // simplemente que no hay crash.
-        @Suppress("UNUSED_VARIABLE")
-        val ignored = result
+            .toModifier(KuisdTheme.Empty)
+        assertNotEquals(Modifier, result)
     }
 }
