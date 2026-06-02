@@ -4,6 +4,7 @@ import dev.kuisd.server.plugins.configureErrorHandling
 import dev.kuisd.server.plugins.configureHttp
 import dev.kuisd.server.plugins.configureMonitoring
 import dev.kuisd.server.plugins.configureSerialization
+import dev.kuisd.server.routing.actionRoutes
 import dev.kuisd.server.routing.healthRoutes
 import dev.kuisd.server.routing.screenRoutes
 import dev.kuisd.server.screens.defaultScreenRegistry
@@ -32,5 +33,6 @@ fun Application.module() {
     routing {
         healthRoutes()
         screenRoutes(registry)
+        actionRoutes()
     }
 }

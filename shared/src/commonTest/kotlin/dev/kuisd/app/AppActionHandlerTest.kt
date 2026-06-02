@@ -8,6 +8,7 @@ import dev.kuisd.sdui.core.CustomAction
 import dev.kuisd.sdui.core.Increment
 import dev.kuisd.sdui.core.Navigate
 import dev.kuisd.sdui.core.SetVar
+import dev.kuisd.sdui.core.Track
 import dev.kuisd.sdui.core.UiAction
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
@@ -61,6 +62,19 @@ class AppActionHandlerTest {
         app.handle(listOf(CustomAction(name = "weird")))
 
         assertEquals("home", stack.current.route)
+        assertTrue(store.vars.isEmpty())
+    }
+
+    @Test
+    fun track_is_supported_and_not_a_noop_fallthrough() {
+        val track = TrackActionHandler()
+        assertTrue(track.supports(Track(event = "screen_view")))
+
+        // El compuesto con TrackActionHandler no debe tratar Track como "no soportada".
+        val store = VariableStore()
+        val app = AppActionHandler(listOf(track, VariableActionHandler(store)))
+        // No crashea y no toca el store de variables.
+        app.handle(listOf(Track(event = "tapped", props = mapOf("id" to "cta"))))
         assertTrue(store.vars.isEmpty())
     }
 
