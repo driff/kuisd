@@ -1,14 +1,21 @@
 package dev.kuisd.server
 
+import dev.kuisd.sdui.core.ActionResponse
 import dev.kuisd.sdui.core.DefaultSduiJson
+import dev.kuisd.sdui.core.FireEndpoint
 import dev.kuisd.sdui.core.KUISD_VERSION_HEADER
 import dev.kuisd.sdui.core.ProblemDetail
 import dev.kuisd.sdui.core.SduiEnvelope
+import dev.kuisd.sdui.core.SetVar
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
 import io.ktor.server.testing.testApplication
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonPrimitive
@@ -170,6 +177,64 @@ class ApplicationTest {
         val feedButton = envelope.root.children.firstOrNull { it.id == "feed" }
         assertNotNull(feedButton, "esperaba un botón id=feed en home")
         assertEquals("button", feedButton.type)
+    }
+
+    @Test
+    fun action_greet_returns_action_response() = testApplication {
+        application { module() }
+        val response = client.post("/action/greet") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"name":"Ana"}""")
+        }
+        assertEquals(HttpStatusCode.OK, response.status)
+        val parsed = DefaultSduiJson.decodeFromString(ActionResponse.serializer(), response.bodyAsText())
+        assertEquals("Hola, Ana!", parsed.message)
+        assertTrue(
+            parsed.actions.any { it is SetVar && it.name == "greeted" },
+            "esperaba un SetVar(greeted) en la respuesta",
+        )
+    }
+
+    @Test
+    fun action_greet_with_empty_name_returns_problem_400() = testApplication {
+        application { module() }
+        val response = client.post("/action/greet") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"name":""}""")
+        }
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertTrue(
+            response.headers[HttpHeaders.ContentType].orEmpty().contains("problem+json"),
+            "esperaba application/problem+json",
+        )
+    }
+
+    @Test
+    fun screen_form_serves_a_fire_endpoint_button() = testApplication {
+        application { module() }
+        val response = client.get("/screen/form")
+        assertEquals(HttpStatusCode.OK, response.status)
+        val envelope = DefaultSduiJson.decodeFromString(SduiEnvelope.serializer(), response.bodyAsText())
+        assertEquals("form", envelope.screenId)
+        assertEquals(JsonPrimitive(""), envelope.variables["name"])
+        assertTrue(
+            envelope.root.children.any { it.type == "textField" && it.props["bind"]?.jsonPrimitive?.content == "name" },
+            "esperaba un textField(bind=name)",
+        )
+        val submit = envelope.root.children.firstOrNull { it.id == "submit" }
+        assertNotNull(submit)
+        assertTrue(
+            submit.actions["onClick"]?.any { it is FireEndpoint && it.endpoint == "/action/greet" } == true,
+            "esperaba un FireEndpoint(/action/greet) en submit.onClick",
+        )
+    }
+
+    @Test
+    fun screen_home_has_form_button() = testApplication {
+        application { module() }
+        val response = client.get("/screen/home")
+        val envelope = DefaultSduiJson.decodeFromString(SduiEnvelope.serializer(), response.bodyAsText())
+        assertNotNull(envelope.root.children.firstOrNull { it.id == "form" })
     }
 
     @Test

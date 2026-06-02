@@ -8,8 +8,4 @@ internal class KtorScreenSource(
 ) : ScreenSource {
     override suspend fun load(screenId: String, args: Map<String, String>): SduiEnvelope =
         client.fetchScreen(screenId)
-
-    fun close() {
-        client.close()
-    }
 }

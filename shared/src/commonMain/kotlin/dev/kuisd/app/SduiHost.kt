@@ -11,9 +11,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import dev.kuisd.app.components.appRegistry
+import dev.kuisd.app.data.KtorActionEndpoint
 import dev.kuisd.app.data.KtorScreenSource
+import dev.kuisd.app.data.SduiClient
 import dev.kuisd.app.icons.appIconsOverride
 import dev.kuisd.app.nav.NavActionHandler
 import dev.kuisd.app.nav.NavBackStack
@@ -28,10 +31,10 @@ import dev.kuisd.sdui.icons.LocalIconRegistry
 import dev.kuisd.sdui.theme.LocalKuisdTheme
 
 /**
- * Host de navegación SDUI: dueño del [NavBackStack] y de un único `KtorScreenSource` compartido (HU-4.2).
- * Crea un [VariableStore] por entrada del back stack (`remember(current.id)`) y compone navegación +
- * variables en un único [AppActionHandler] sin doble log (spec 005). Renderiza la pantalla del tope vía
- * [SduiScreen] y ofrece una afordancia "atrás" cross-platform.
+ * Host de navegación SDUI: dueño del [NavBackStack] y de un único [SduiClient] compartido por el
+ * `ScreenSource` (carga de pantallas) y el `ActionEndpoint` (FireEndpoint, spec 009). Por cada
+ * entrada del back stack crea un [VariableStore], un `CoroutineScope` (cancelable al salir) y un
+ * [AppActionHandler] compuesto (nav + variables + track + fireEndpoint) sin doble log (spec 005).
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,23 +43,17 @@ fun SduiHost(
     modifier: Modifier = Modifier,
 ) {
     val backStack = remember { NavBackStack(startRoute) }
-    val source = remember { KtorScreenSource() }
-    DisposableEffect(source) {
-        onDispose { source.close() }
+    val sharedClient = remember { SduiClient() }
+    val source = remember(sharedClient) { KtorScreenSource(sharedClient) }
+    val actionEndpoint = remember(sharedClient) { KtorActionEndpoint(sharedClient) }
+    DisposableEffect(sharedClient) {
+        onDispose { sharedClient.close() }
     }
 
-    val current = backStack.current
-    val store = remember(current.id) { VariableStore() }
-    val handler = remember(current.id, backStack) {
-        AppActionHandler(
-            listOf(
-                NavActionHandler(backStack),
-                VariableActionHandler(store),
-            ),
-        )
-    }
     val theme = rememberAppTheme()
     val icons = remember { DefaultIconRegistry + appIconsOverride() }
+
+    val current = backStack.current
 
     Scaffold(
         modifier = modifier,
@@ -71,14 +68,30 @@ fun SduiHost(
             }
         },
     ) { padding ->
-        CompositionLocalProvider(
-            LocalSduiActionHandler provides handler,
-            LocalComponentRegistry provides appRegistry,
-            LocalVariables provides store.scope,
-            LocalKuisdTheme provides theme,
-            LocalIconRegistry provides icons,
-        ) {
-            key(current.id) {
+        key(current.id) {
+            val store = remember { VariableStore() }
+            val scope = rememberCoroutineScope()
+            val fire = remember { FireEndpointActionHandler(scope, actionEndpoint, store) }
+            val handler = remember {
+                AppActionHandler(
+                    listOf(
+                        NavActionHandler(backStack),
+                        VariableActionHandler(store),
+                        TrackActionHandler(),
+                        fire,
+                    ),
+                )
+            }
+            // Rompe el ciclo handler<->compuesto: el FireEndpoint re-despacha por el compuesto.
+            fire.dispatch = handler::handle
+
+            CompositionLocalProvider(
+                LocalSduiActionHandler provides handler,
+                LocalComponentRegistry provides appRegistry,
+                LocalVariables provides store.scope,
+                LocalKuisdTheme provides theme,
+                LocalIconRegistry provides icons,
+            ) {
                 SduiScreen(
                     screenId = current.route,
                     source = source,

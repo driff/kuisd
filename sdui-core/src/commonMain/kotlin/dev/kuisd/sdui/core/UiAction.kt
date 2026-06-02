@@ -45,8 +45,31 @@ data class Toggle(
 @SerialName("network")
 data class FireEndpoint(
     val endpoint: String,
+    val method: String = "POST",
     val payloadVars: List<String> = emptyList(),
+    val statusVar: String? = null,
+    val resultVar: String? = null,
+    val onSuccess: List<UiAction> = emptyList(),
+    val onError: List<UiAction> = emptyList(),
 ) : UiAction
+
+/**
+ * Respuesta de un endpoint de acción (spec 009): acciones a despachar en el cliente tras la
+ * petición + un mensaje legible opcional (p.ej. para enlazar con un `text` vía `resultVar`).
+ */
+@Serializable
+data class ActionResponse(
+    val actions: List<UiAction> = emptyList(),
+    val message: String? = null,
+)
+
+/** Literales del ciclo de estado de un [FireEndpoint], compartidos por server y cliente. */
+object EndpointStatus {
+    const val IDLE = "idle"
+    const val LOADING = "loading"
+    const val SUCCESS = "success"
+    const val ERROR = "error"
+}
 
 @Serializable
 @SerialName("track")

@@ -21,6 +21,10 @@ fun Application.configureErrorHandling(isDev: Boolean) {
         exception<ScreenNotFoundException> { call, cause ->
             call.respondProblem(HttpStatusCode.NotFound, "Screen not found", cause.message)
         }
+        exception<IllegalArgumentException> { call, cause ->
+            // Validación de entrada (p.ej. `require(...)` en una acción) → 400 (spec 009).
+            call.respondProblem(HttpStatusCode.BadRequest, "Bad Request", cause.message)
+        }
         exception<Throwable> { call, cause ->
             call.application.log.error("Unhandled error (callId=${call.callId})", cause)
             call.respondProblem(
