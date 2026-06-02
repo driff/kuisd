@@ -37,7 +37,7 @@ object FormScreen : ScreenBuilder {
             children = listOf(
                 titleNode(),
                 textFieldNode(id = "name-input", bind = "name", placeholder = "Tu nombre"),
-                bindingTextNode(id = "status", binding = "Estado: \$submitStatus"),
+                statusRow(),
                 bindingTextNode(id = "result", binding = "\$submitResult"),
                 submitButton(),
             ),
@@ -70,6 +70,21 @@ object FormScreen : ScreenBuilder {
         type = "text",
         id = id,
         props = JsonObject(mapOf("text" to JsonPrimitive(binding))),
+    )
+
+    /**
+     * El binding (spec 005) resuelve el **campo completo** solo si empieza por `$`; no interpola
+     * dentro de un string ("Estado: $submitStatus" se pintaría literal). Por eso se parte en un
+     * `row`: literal "Estado: " + binding "$submitStatus" (mismo patrón que el saludo del feed).
+     */
+    private fun statusRow(): SduiNode = SduiNode(
+        type = "row",
+        id = "status",
+        modifier = UiModifier(alignment = Tokens.Alignment.CenterVertically),
+        children = listOf(
+            bindingTextNode(id = "status-label", binding = "Estado: "),
+            bindingTextNode(id = "status-value", binding = "\$submitStatus"),
+        ),
     )
 
     private fun submitButton(): SduiNode = SduiNode(
