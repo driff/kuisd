@@ -25,5 +25,6 @@ fun defaultScreenRegistry(): ScreenRegistry =
             "details" to DetailsScreen,
             "more" to MoreScreen,
             "counter" to CounterScreen,
+            "feed" to FeedScreen,
         ),
     )

@@ -11,8 +11,9 @@ data class UiModifier(
     val padding: PaddingTokens? = null,
     val background: ColorToken? = null,
     val cornerRadius: RadiusToken? = null,
+    val elevation: ElevationToken? = null,
     val weight: Float? = null,
-    val alignment: String? = null,
+    val alignment: AlignmentToken? = null,
 )
 
 @Serializable

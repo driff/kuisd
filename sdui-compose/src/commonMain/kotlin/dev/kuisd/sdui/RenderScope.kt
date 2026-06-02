@@ -1,7 +1,14 @@
 package dev.kuisd.sdui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import dev.kuisd.sdui.core.SduiNode
+import dev.kuisd.sdui.modifier.toHorizontalAlignment
+import dev.kuisd.sdui.modifier.toModifier
+import dev.kuisd.sdui.modifier.toVerticalAlignment
+import dev.kuisd.sdui.theme.LocalKuisdTheme
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
@@ -9,6 +16,26 @@ import kotlinx.serialization.json.JsonPrimitive
 class RenderScope internal constructor(
     val node: SduiNode,
 ) {
+    /**
+     * Modifier resuelto del `UiModifier` del nodo contra el `KuisdTheme` actual (spec 008).
+     * Memoizado por `(node.modifier, theme)` para evitar recalcular en recomposiciones que no
+     * tocan ni el nodo ni el theme.
+     */
+    val modifier: Modifier
+        @Composable get() {
+            val theme = LocalKuisdTheme.current
+            val um = node.modifier
+            return remember(um, theme) { um.toModifier(theme) }
+        }
+
+    /** Alineación horizontal de los hijos para un `Column`; `null` si el token no aplica al eje. */
+    fun horizontalAlignmentOrNull(): Alignment.Horizontal? =
+        node.modifier.alignment.toHorizontalAlignment()
+
+    /** Alineación vertical de los hijos para un `Row`; `null` si el token no aplica al eje. */
+    fun verticalAlignmentOrNull(): Alignment.Vertical? =
+        node.modifier.alignment.toVerticalAlignment()
+
     @Composable
     fun renderChildren() {
         node.children.forEach { RenderNode(it) }

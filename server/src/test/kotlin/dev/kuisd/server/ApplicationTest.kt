@@ -131,6 +131,48 @@ class ApplicationTest {
     }
 
     @Test
+    fun screen_feed_serves_lazy_column_with_5_cards() = testApplication {
+        application { module() }
+        val response = client.get("/screen/feed")
+        assertEquals(HttpStatusCode.OK, response.status)
+
+        val envelope = DefaultSduiJson.decodeFromString(SduiEnvelope.serializer(), response.bodyAsText())
+        assertEquals("feed", envelope.screenId)
+
+        val lazyList = envelope.root.children.firstOrNull { it.type == "lazyColumn" }
+        assertNotNull(lazyList, "esperaba un lazyColumn dentro del column raíz")
+        val cards = lazyList.children.filter { it.type == "card" }
+        assertEquals(5, cards.size, "esperaba 5 cards dentro del lazyColumn")
+        cards.forEach { card ->
+            assertEquals("color.surface", card.props["background"]?.jsonPrimitive?.content)
+            assertEquals("radius.card", card.props["shape"]?.jsonPrimitive?.content)
+            assertEquals("elevation.sm", card.props["elevation"]?.jsonPrimitive?.content)
+        }
+    }
+
+    @Test
+    fun screen_feed_header_has_iconButton_back() = testApplication {
+        application { module() }
+        val response = client.get("/screen/feed")
+        val envelope = DefaultSduiJson.decodeFromString(SduiEnvelope.serializer(), response.bodyAsText())
+        val header = envelope.root.children.firstOrNull { it.id == "header" }
+        assertNotNull(header)
+        val backButton = header.children.firstOrNull { it.type == "iconButton" }
+        assertNotNull(backButton, "esperaba un iconButton en el header")
+        assertEquals("arrowBack", backButton.props["name"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun screen_home_has_feed_button() = testApplication {
+        application { module() }
+        val response = client.get("/screen/home")
+        val envelope = DefaultSduiJson.decodeFromString(SduiEnvelope.serializer(), response.bodyAsText())
+        val feedButton = envelope.root.children.firstOrNull { it.id == "feed" }
+        assertNotNull(feedButton, "esperaba un botón id=feed en home")
+        assertEquals("button", feedButton.type)
+    }
+
+    @Test
     fun client_version_header_is_accepted() = testApplication {
         application { module() }
         val response = client.get("/screen/home") {
