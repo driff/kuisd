@@ -185,6 +185,16 @@ internal fun isItemSelected(selectedValue: String?, itemValue: String): Boolean 
 | — | — | — | Ninguna. Todo usa `material3` + `material-icons` ya presentes (007/008). |
 
 ## Riesgos y mitigaciones
+- **Scaffold anidado (host + screen) → doble consumo de `WindowInsets`** (detectado en code-review).
+  `SduiHost` ya envuelve cada pantalla en un `Scaffold` que consume los insets del sistema y entrega
+  su `padding`. Si el `scaffold` del motor también los consume, status/navigation bar se cuentan dos
+  veces. **Mitigación aplicada:** el host es el ÚNICO dueño de los insets; el `scaffold`/`topAppBar`/
+  `bottomBar` del motor son "inset-naive" (`contentWindowInsets`/`windowInsets = WindowInsets(0)`, val
+  `EngineBarInsets`). En desktop no hay system bars (sin efecto); en móvil evita el doble padding.
+  **Limitación conocida (follow-up):** si una pantalla NO-raíz adopta `scaffold` con `canGoBack=true`,
+  su `topAppBar` quedaría apilado bajo la barra "‹ Atrás" del host — se resolverá moviendo el chrome
+  de navegación al árbol SDUI (server-driven back) en una spec posterior. Hoy solo `home` (ruta raíz,
+  `canGoBack=false`) usa `scaffold`, así que no se dispara.
 - **`Scaffold`/`TopAppBar` experimentales** → `@OptIn(ExperimentalMaterial3Api::class)` acotado a cada
   renderer (no contamina `CorePack`), igual que `textField` (007).
 - **content con innerPadding** → el `Box(padding)` envuelve a TODO el content; si el content quiere ser

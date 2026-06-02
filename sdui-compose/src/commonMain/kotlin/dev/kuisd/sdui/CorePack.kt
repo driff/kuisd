@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -348,6 +349,16 @@ private fun RenderScope.IconButtonRenderer(
 }
 
 /**
+ * Insets cero para el `scaffold`/barras del motor. El host (`SduiHost`) es el ÚNICO dueño de los
+ * `WindowInsets` del sistema: su `Scaffold` los consume y entrega el `padding` ya acotado. El
+ * `scaffold` del motor vive DENTRO de ese área, así que es "inset-naive" para no duplicar el padding
+ * (status/navigation bar contado dos veces). Limitación conocida: si una pantalla NO-raíz adopta
+ * `scaffold` con `canGoBack`, su `topAppBar` quedaría apilado bajo la barra "Atrás" del host
+ * (follow-up: mover el chrome de navegación al árbol SDUI).
+ */
+private val EngineBarInsets = WindowInsets(0, 0, 0, 0)
+
+/**
  * Renderer del `scaffold`: monta `material3.Scaffold` con los slots resueltos por `type` (HU-1).
  * El `innerPadding` se aplica a un `Box` envoltorio del content (RenderNode no acepta modifier);
  * cada child conserva su propio `UiModifier`. Barras ausentes ⇒ lambda vacía (slot omitido).
@@ -357,6 +368,7 @@ private fun RenderScope.ScaffoldRenderer(baseModifier: Modifier) {
     val slots = remember(node.children) { partitionScaffoldSlots(node.children) }
     Scaffold(
         modifier = baseModifier,
+        contentWindowInsets = EngineBarInsets,
         topBar = { slots.topBar?.let { RenderNode(it) } },
         bottomBar = { slots.bottomBar?.let { RenderNode(it) } },
     ) { innerPadding ->
@@ -377,6 +389,7 @@ private fun RenderScope.TopAppBarRenderer(p: TopAppBarProps, baseModifier: Modif
     val navActions = node.actions["onNavigationClick"].orEmpty()
     TopAppBar(
         modifier = baseModifier,
+        windowInsets = EngineBarInsets,
         title = { Text(bind(p.title)) },
         navigationIcon = {
             if (navActions.isNotEmpty()) {
@@ -401,7 +414,7 @@ private fun RenderScope.BottomBarRenderer(p: BottomBarProps, baseModifier: Modif
     val handler = LocalSduiActionHandler.current
     val vars = LocalVariables.current
     val selectedValue = p.selectedBind?.let { vars.get(it)?.asDisplayString() }
-    NavigationBar(modifier = baseModifier) {
+    NavigationBar(modifier = baseModifier, windowInsets = EngineBarInsets) {
         node.children.forEach { child ->
             // Guard por `type`: con `ignoreUnknownKeys=true` cualquier child decodificaría a props
             // por defecto; solo los `bottomBarItem` deben volverse ítems (HU-3.2/4.2).
