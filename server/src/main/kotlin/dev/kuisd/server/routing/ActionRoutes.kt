@@ -2,6 +2,7 @@ package dev.kuisd.server.routing
 
 import dev.kuisd.sdui.core.ActionResponse
 import dev.kuisd.sdui.core.SetVar
+import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
@@ -19,7 +20,7 @@ fun Route.actionRoutes() {
     post("/action/greet") {
         val body = call.receive<JsonObject>()
         val name = body["name"]?.jsonPrimitive?.content.orEmpty().trim()
-        require(name.isNotEmpty()) { "name requerido" }
+        if (name.isEmpty()) throw BadRequestException("name requerido")
         call.respond(
             ActionResponse(
                 message = "Hola, $name!",

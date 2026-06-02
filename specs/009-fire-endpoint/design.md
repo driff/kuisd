@@ -73,10 +73,10 @@ data class ActionResponse(
 
 /** Literales compartidos del ciclo de estado (server y cliente). */
 object EndpointStatus {
-    const val Idle = "idle"
-    const val Loading = "loading"
-    const val Success = "success"
-    const val Error = "error"
+    const val IDLE = "idle"
+    const val LOADING = "loading"
+    const val SUCCESS = "success"
+    const val ERROR = "error"
 }
 ```
 - **Wire compat:** los campos nuevos de `FireEndpoint` son opcionales con default; un payload viejo
@@ -135,7 +135,7 @@ internal class FireEndpointActionHandler(
     override fun handle(actions: List<UiAction>) = actions.forEach { action ->
         if (action !is FireEndpoint) return@forEach
         // 1) loading SÍNCRONO (mismo frame) antes de suspender.
-        action.statusVar?.let { store.set(it, JsonPrimitive(EndpointStatus.Loading)) }
+        action.statusVar?.let { store.set(it, JsonPrimitive(EndpointStatus.LOADING)) }
         // 2) cuerpo desde el store (vars ausentes se omiten — HU-6.3).
         val payload = action.payloadVars
             .mapNotNull { name -> store.scope.get(name)?.let { name to it } }
@@ -144,13 +144,13 @@ internal class FireEndpointActionHandler(
         scope.launch {
             try {
                 val res = endpoint.fire(ActionRequest(action.endpoint, action.method, payload))
-                action.statusVar?.let { store.set(it, JsonPrimitive(EndpointStatus.Success)) }
+                action.statusVar?.let { store.set(it, JsonPrimitive(EndpointStatus.SUCCESS)) }
                 action.resultVar?.let { store.set(it, JsonPrimitive(res.message.orEmpty())) }
                 dispatch(action.onSuccess + res.actions)
             } catch (cancellation: CancellationException) {
                 throw cancellation                                   // respeta cancelación del scope
             } catch (error: Throwable) {
-                action.statusVar?.let { store.set(it, JsonPrimitive(EndpointStatus.Error)) }
+                action.statusVar?.let { store.set(it, JsonPrimitive(EndpointStatus.ERROR)) }
                 action.resultVar?.let { store.set(it, JsonPrimitive(HttpErrorMapper.message(error))) }
                 dispatch(action.onError)
             }
@@ -240,7 +240,7 @@ discriminador "type".
 `form`: `column` con `textField(bind="name")`, `text "$submitStatus"`, `text "$submitResult"`, y un
 `button "Enviar"` con `actions["onClick"] = [FireEndpoint("/action/greet", "POST",
 payloadVars=["name"], statusVar="submitStatus", resultVar="submitResult")]`. Variables sembradas:
-`name=""`, `submitStatus=EndpointStatus.Idle`, `submitResult=""`. `home` gana un `button`
+`name=""`, `submitStatus=EndpointStatus.IDLE`, `submitResult=""`. `home` gana un `button`
 "Formulario" → `Navigate("form")`.
 
 ## Modelo de datos y estados

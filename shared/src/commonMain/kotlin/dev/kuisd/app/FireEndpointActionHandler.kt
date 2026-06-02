@@ -28,9 +28,10 @@ internal class FireEndpointActionHandler(
     /**
      * Re-despacho de `onSuccess`/`onError`/`response.actions`. Lo inyecta el host TRAS construir el
      * `AppActionHandler`, rompiendo el ciclo handler<->compuesto. Default no-op: el handler es
-     * usable y testeable sin host.
+     * usable y testeable sin host. `internal set` para no exponer la mutación fuera del módulo.
      */
     var dispatch: (List<UiAction>) -> Unit = {}
+        internal set
 
     override fun supports(action: UiAction): Boolean = action is FireEndpoint
 

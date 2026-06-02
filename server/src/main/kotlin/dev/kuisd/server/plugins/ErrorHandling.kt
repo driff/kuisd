@@ -9,6 +9,7 @@ import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.install
 import io.ktor.server.application.log
+import io.ktor.server.plugins.BadRequestException
 import io.ktor.server.plugins.callid.callId
 import io.ktor.server.plugins.statuspages.StatusPages
 import io.ktor.server.response.respondText
@@ -21,8 +22,9 @@ fun Application.configureErrorHandling(isDev: Boolean) {
         exception<ScreenNotFoundException> { call, cause ->
             call.respondProblem(HttpStatusCode.NotFound, "Screen not found", cause.message)
         }
-        exception<IllegalArgumentException> { call, cause ->
-            // Validación de entrada (p.ej. `require(...)` en una acción) → 400 (spec 009).
+        exception<BadRequestException> { call, cause ->
+            // Validación de entrada / body malformado en una acción → 400 (spec 009). Específico
+            // (no `IllegalArgumentException` genérico) para no convertir bugs internos en 400.
             call.respondProblem(HttpStatusCode.BadRequest, "Bad Request", cause.message)
         }
         exception<Throwable> { call, cause ->
