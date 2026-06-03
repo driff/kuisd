@@ -4,7 +4,7 @@
 
 Cada tarea es atómica y verificable. Marca `[x]` solo cuando su verificación pasa.
 
-- [ ] **T1** — `:sdui-core`: añadir al `sealed interface UiAction` (`UiAction.kt`) las acciones
+- [x] **T1** — `:sdui-core`: añadir al `sealed interface UiAction` (`UiAction.kt`) las acciones
   `ShowDialog`, `ShowBottomSheet(content: List<SduiNode>, onDismiss)`, `ShowSnackbar(message,
   messageVar?, actionLabel?, onAction, duration="short")` y `DismissOverlay` (`data object`), con sus
   `@SerialName`. Test `OverlayActionsWireTest` (round-trip JSON por el polimorfismo, incl. `content`

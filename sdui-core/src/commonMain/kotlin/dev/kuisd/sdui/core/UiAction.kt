@@ -71,6 +71,43 @@ object EndpointStatus {
     const val ERROR = "error"
 }
 
+/**
+ * Overlays imperativos (spec 011). El estado y el render viven en el host (capa app); el motor solo
+ * despacha estas acciones por `LocalSduiActionHandler`. Un diálogo/hoja activo a la vez.
+ */
+@Serializable
+@SerialName("showDialog")
+data class ShowDialog(
+    val title: String = "",
+    val text: String = "",
+    val confirmLabel: String? = null,
+    val onConfirm: List<UiAction> = emptyList(),
+    val dismissLabel: String? = null,
+    val onDismiss: List<UiAction> = emptyList(),
+) : UiAction
+
+@Serializable
+@SerialName("showBottomSheet")
+data class ShowBottomSheet(
+    val content: List<SduiNode> = emptyList(),
+    val onDismiss: List<UiAction> = emptyList(),
+) : UiAction
+
+@Serializable
+@SerialName("showSnackbar")
+data class ShowSnackbar(
+    val message: String = "",
+    val messageVar: String? = null,
+    val actionLabel: String? = null,
+    val onAction: List<UiAction> = emptyList(),
+    val duration: String = "short", // "short" | "long" | "indefinite"
+) : UiAction
+
+/** Cierra el diálogo/hoja activo si lo hay (no-op si no hay ninguno). */
+@Serializable
+@SerialName("dismissOverlay")
+data object DismissOverlay : UiAction
+
 @Serializable
 @SerialName("track")
 data class Track(
