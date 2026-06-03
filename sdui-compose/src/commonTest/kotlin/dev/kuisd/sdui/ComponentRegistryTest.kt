@@ -82,4 +82,9 @@ class ComponentRegistryTest {
         // `bottomBarItem` no es componente standalone: se decodifica dentro de `bottomBar`.
         assertNull(CorePack.rendererFor("bottomBarItem"))
     }
+
+    @Test
+    fun corepack_registers_image() {
+        assertNotNull(CorePack.rendererFor("image"))
+    }
 }

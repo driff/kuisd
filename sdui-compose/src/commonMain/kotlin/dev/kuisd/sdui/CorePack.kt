@@ -45,6 +45,7 @@ import dev.kuisd.sdui.core.SpaceToken
 import dev.kuisd.sdui.core.Tokens
 import dev.kuisd.sdui.core.sduiComponent
 import dev.kuisd.sdui.icons.LocalIconRegistry
+import dev.kuisd.sdui.modifier.toContentScale
 import dev.kuisd.sdui.theme.LocalKuisdTheme
 import kotlinx.coroutines.flow.drop
 import kotlinx.serialization.Serializable
@@ -126,6 +127,17 @@ data class IconProps(
 data class IconButtonProps(
     val name: String = "",
     val tint: ColorToken? = null,
+    val contentDescription: String? = null,
+)
+
+/**
+ * Imagen remota por URL (spec 012). `url`/`contentDescription` bindables (005); carga vía seam
+ * `LocalAsyncImageLoader`. Solo URL remota en v1 (imágenes locales/empaquetadas fuera de alcance).
+ */
+@Serializable
+data class ImageProps(
+    val url: String = "",
+    val contentScale: String = "fit", // crop|fit|fillBounds|inside|none
     val contentDescription: String? = null,
 )
 
@@ -212,6 +224,7 @@ val CorePack: ComponentRegistry = componentRegistry {
     register(sduiComponent<ScaffoldProps>("scaffold")) { p -> ScaffoldRenderer(p, modifier) }
     register(sduiComponent<TopAppBarProps>("topAppBar")) { p -> TopAppBarRenderer(p, modifier) }
     register(sduiComponent<BottomBarProps>("bottomBar")) { p -> BottomBarRenderer(p, modifier) }
+    register(sduiComponent<ImageProps>("image")) { p -> ImageRenderer(p, modifier) }
 }
 
 /**
@@ -354,6 +367,21 @@ private fun RenderScope.IconButtonRenderer(
             tint = theme.resolveColorOrNull(p.tint) ?: LocalContentColor.current,
         )
     }
+}
+
+/**
+ * Renderer del `image` (spec 012): delega la carga al seam `LocalAsyncImage` (la app lo provee con
+ * Coil). `url`/`contentDescription` bindables (005); el `UiModifier` (tamaño/forma, 008) va al loader.
+ */
+@Composable
+private fun RenderScope.ImageRenderer(p: ImageProps, baseModifier: Modifier) {
+    LocalAsyncImageLoader.current.Image(
+        url = bind(p.url),
+        // Un binding ausente resuelve a "" (resolveBinding); para a11y se trata como decorativa (null).
+        contentDescription = p.contentDescription?.let { bind(it) }?.ifEmpty { null },
+        contentScale = p.contentScale.toContentScale(),
+        modifier = baseModifier,
+    )
 }
 
 /**

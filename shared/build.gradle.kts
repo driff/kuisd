@@ -39,6 +39,9 @@ kotlin {
             implementation(project(":sdui-core"))
             implementation(libs.ktor.client.core)
             implementation(libs.kotlinx.coroutines.core)
+            // Coil 3 (spec 012): impl del seam LocalAsyncImage; usa Ktor 3 para la red.
+            implementation(libs.coil.compose)
+            implementation(libs.coil.network.ktor3)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))

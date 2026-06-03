@@ -55,6 +55,18 @@ object HomeScreen : ScreenBuilder {
                 ),
             ),
             SduiNode(
+                type = "image",
+                id = "banner",
+                modifier = UiModifier(fillMaxWidth = true),
+                props = JsonObject(
+                    mapOf(
+                        "url" to JsonPrimitive("https://picsum.photos/seed/kuisd/800/300"),
+                        "contentScale" to JsonPrimitive("crop"),
+                        "contentDescription" to JsonPrimitive("Imagen de portada"),
+                    ),
+                ),
+            ),
+            SduiNode(
                 type = "button",
                 id = "cta",
                 props = JsonObject(mapOf("label" to JsonPrimitive("Empezar"))),
