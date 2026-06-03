@@ -3,6 +3,8 @@ package dev.kuisd.sdui
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -19,9 +21,13 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -123,7 +129,38 @@ data class IconButtonProps(
     val contentDescription: String? = null,
 )
 
-/** Catálogo base del motor (specs 001/003/004/005/007 + 008). */
+/**
+ * Slots por children + apariencia del `UiModifier` (HU-1). `contentDirection` decide cómo se apilan
+ * los nodos del slot content: `"column"` (vertical, por defecto) o `"row"` (horizontal). Sin esto, un
+ * content de 2+ nodos se solaparía en un `Box`.
+ */
+@Serializable
+data class ScaffoldProps(
+    val contentDirection: String = "column",
+)
+
+/** Barra superior: título bindable e icono de navegación opcional (HU-2). */
+@Serializable
+data class TopAppBarProps(
+    val title: String = "",
+    val navigationIcon: String? = null,
+)
+
+/** Barra inferior: `selectedBind` = nombre DIRECTO de la variable de selección (HU-3). */
+@Serializable
+data class BottomBarProps(
+    val selectedBind: String? = null,
+)
+
+/** Ítem de `bottomBar`; sus props se decodifican dentro del renderer (no es componente standalone). */
+@Serializable
+data class BottomBarItemProps(
+    val icon: String = "",
+    val label: String = "",
+    val value: String = "",
+)
+
+/** Catálogo base del motor (specs 001/003/004/005/007 + 008 + 010). */
 val CorePack: ComponentRegistry = componentRegistry {
     register(sduiComponent<ColumnProps>("column")) {
         Column(
@@ -172,6 +209,9 @@ val CorePack: ComponentRegistry = componentRegistry {
     register(sduiComponent<IconButtonProps>("iconButton")) { p ->
         IconButtonRenderer(p, modifier, node.actions["onClick"].orEmpty())
     }
+    register(sduiComponent<ScaffoldProps>("scaffold")) { p -> ScaffoldRenderer(p, modifier) }
+    register(sduiComponent<TopAppBarProps>("topAppBar")) { p -> TopAppBarRenderer(p, modifier) }
+    register(sduiComponent<BottomBarProps>("bottomBar")) { p -> BottomBarRenderer(p, modifier) }
 }
 
 /**
@@ -275,11 +315,15 @@ private fun RenderScope.SpacerRenderer(p: SpacerProps, baseModifier: Modifier) {
     Spacer(modifier = baseModifier.size(size))
 }
 
+/** Resuelve un icono por nombre contra el [LocalIconRegistry]; fallback visible si no está registrado. */
+@Composable
+private fun resolveIcon(name: String) =
+    LocalIconRegistry.current.get(name) ?: Icons.AutoMirrored.Outlined.HelpOutline
+
 @Composable
 private fun RenderScope.IconRenderer(p: IconProps, baseModifier: Modifier) {
     val theme = LocalKuisdTheme.current
-    val registry = LocalIconRegistry.current
-    val vector = registry.get(p.name) ?: Icons.AutoMirrored.Outlined.HelpOutline
+    val vector = resolveIcon(p.name)
     // Sin token de tamaño → no se aplica modifier de size: el Icon usa su tamaño intrínseco
     // (Material default), evitando materializar un `dp` literal en el motor.
     val sizeModifier = theme.resolveSpaceOrNull(p.size)?.let { Modifier.size(it) } ?: Modifier
@@ -298,9 +342,8 @@ private fun RenderScope.IconButtonRenderer(
     actions: List<dev.kuisd.sdui.core.UiAction>,
 ) {
     val theme = LocalKuisdTheme.current
-    val registry = LocalIconRegistry.current
     val handler = LocalSduiActionHandler.current
-    val vector = registry.get(p.name) ?: Icons.AutoMirrored.Outlined.HelpOutline
+    val vector = resolveIcon(p.name)
     IconButton(
         onClick = { handler.handle(actions) },
         modifier = baseModifier,
@@ -310,5 +353,94 @@ private fun RenderScope.IconButtonRenderer(
             contentDescription = p.contentDescription,
             tint = theme.resolveColorOrNull(p.tint) ?: LocalContentColor.current,
         )
+    }
+}
+
+/**
+ * Insets cero para el `scaffold`/barras del motor. El host (`SduiHost`) es el ÚNICO dueño de los
+ * `WindowInsets` del sistema: su `Scaffold` los consume y entrega el `padding` ya acotado. El
+ * `scaffold` del motor vive DENTRO de ese área, así que es "inset-naive" para no duplicar el padding
+ * (status/navigation bar contado dos veces). Limitación conocida: si una pantalla NO-raíz adopta
+ * `scaffold` con `canGoBack`, su `topAppBar` quedaría apilado bajo la barra "Atrás" del host
+ * (follow-up: mover el chrome de navegación al árbol SDUI).
+ */
+private val EngineBarInsets = WindowInsets(0, 0, 0, 0)
+
+/**
+ * Renderer del `scaffold`: monta `material3.Scaffold` con los slots resueltos por `type` (HU-1).
+ * El `innerPadding` se aplica al `Column`/`Row` que envuelve el content (RenderNode no acepta
+ * modifier); cada child conserva su propio `UiModifier`. Barras ausentes ⇒ lambda vacía (slot omitido).
+ */
+@Composable
+private fun RenderScope.ScaffoldRenderer(p: ScaffoldProps, baseModifier: Modifier) {
+    val slots = remember(node.children) { partitionScaffoldSlots(node.children) }
+    Scaffold(
+        modifier = baseModifier,
+        contentWindowInsets = EngineBarInsets,
+        topBar = { slots.topBar?.let { RenderNode(it) } },
+        bottomBar = { slots.bottomBar?.let { RenderNode(it) } },
+    ) { innerPadding ->
+        // Apila el content (no `Box`, que solaparía 2+ nodos). `row` → horizontal; resto → vertical.
+        val contentModifier = Modifier.padding(innerPadding)
+        if (p.contentDirection == "row") {
+            Row(contentModifier) { slots.content.forEach { RenderNode(it) } }
+        } else {
+            Column(contentModifier) { slots.content.forEach { RenderNode(it) } }
+        }
+    }
+}
+
+/**
+ * Renderer del `topAppBar` (HU-2): título bindable, icono de navegación SOLO si hay
+ * `onNavigationClick`, y children como acciones a la derecha. `@OptIn` acotado al renderer.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun RenderScope.TopAppBarRenderer(p: TopAppBarProps, baseModifier: Modifier) {
+    val handler = LocalSduiActionHandler.current
+    val navActions = node.actions["onNavigationClick"].orEmpty()
+    TopAppBar(
+        modifier = baseModifier,
+        windowInsets = EngineBarInsets,
+        title = { Text(bind(p.title)) },
+        navigationIcon = {
+            if (navActions.isNotEmpty()) {
+                IconButton(onClick = { handler.handle(navActions) }) {
+                    Icon(resolveIcon(p.navigationIcon.orEmpty()), contentDescription = null)
+                }
+            }
+        },
+        actions = { renderChildren() },
+    )
+}
+
+/**
+ * Renderer del `bottomBar` (HU-3): un `NavigationBarItem` por child decodificable a
+ * `BottomBarItemProps`; los no-ítem se ignoran. `selectedBind` se lee reactivamente del store
+ * (005) y marca seleccionado el ítem cuyo `value` coincide.
+ */
+@Composable
+private fun RenderScope.BottomBarRenderer(p: BottomBarProps, baseModifier: Modifier) {
+    val handler = LocalSduiActionHandler.current
+    val vars = LocalVariables.current
+    // `selectedBind` admite el nombre directo o con `$` (se normaliza por `removePrefix`); la lectura
+    // del store es reactiva (005): al cambiar la variable, el ítem activo se recompone.
+    val selectedValue = p.selectedBind?.removePrefix("$")?.let { vars.get(it)?.asDisplayString() }
+    // Decodifica los ítems UNA vez por `node.children` (no en cada recomposición de la barra). Guard por
+    // `type`: con `ignoreUnknownKeys=true` cualquier child decodificaría a props por defecto (HU-3.2/4.2).
+    val items = remember(node.children) {
+        node.children
+            .filter { it.type == "bottomBarItem" }
+            .mapNotNull { child -> decodeOrNull<BottomBarItemProps>(child)?.let { child to it } }
+    }
+    NavigationBar(modifier = baseModifier, windowInsets = EngineBarInsets) {
+        items.forEach { (child, item) ->
+            NavigationBarItem(
+                selected = isItemSelected(selectedValue, item.value),
+                onClick = { handler.handle(child.actions["onClick"].orEmpty()) },
+                icon = { Icon(resolveIcon(item.icon), contentDescription = null) },
+                label = { Text(bind(item.label)) },
+            )
+        }
     }
 }
