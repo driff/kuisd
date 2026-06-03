@@ -315,11 +315,15 @@ private fun RenderScope.SpacerRenderer(p: SpacerProps, baseModifier: Modifier) {
     Spacer(modifier = baseModifier.size(size))
 }
 
+/** Resuelve un icono por nombre contra el [LocalIconRegistry]; fallback visible si no está registrado. */
+@Composable
+private fun resolveIcon(name: String) =
+    LocalIconRegistry.current.get(name) ?: Icons.AutoMirrored.Outlined.HelpOutline
+
 @Composable
 private fun RenderScope.IconRenderer(p: IconProps, baseModifier: Modifier) {
     val theme = LocalKuisdTheme.current
-    val registry = LocalIconRegistry.current
-    val vector = registry.get(p.name) ?: Icons.AutoMirrored.Outlined.HelpOutline
+    val vector = resolveIcon(p.name)
     // Sin token de tamaño → no se aplica modifier de size: el Icon usa su tamaño intrínseco
     // (Material default), evitando materializar un `dp` literal en el motor.
     val sizeModifier = theme.resolveSpaceOrNull(p.size)?.let { Modifier.size(it) } ?: Modifier
@@ -338,9 +342,8 @@ private fun RenderScope.IconButtonRenderer(
     actions: List<dev.kuisd.sdui.core.UiAction>,
 ) {
     val theme = LocalKuisdTheme.current
-    val registry = LocalIconRegistry.current
     val handler = LocalSduiActionHandler.current
-    val vector = registry.get(p.name) ?: Icons.AutoMirrored.Outlined.HelpOutline
+    val vector = resolveIcon(p.name)
     IconButton(
         onClick = { handler.handle(actions) },
         modifier = baseModifier,
@@ -402,10 +405,8 @@ private fun RenderScope.TopAppBarRenderer(p: TopAppBarProps, baseModifier: Modif
         title = { Text(bind(p.title)) },
         navigationIcon = {
             if (navActions.isNotEmpty()) {
-                val vector = LocalIconRegistry.current.get(p.navigationIcon.orEmpty())
-                    ?: Icons.AutoMirrored.Outlined.HelpOutline
                 IconButton(onClick = { handler.handle(navActions) }) {
-                    Icon(vector, contentDescription = null)
+                    Icon(resolveIcon(p.navigationIcon.orEmpty()), contentDescription = null)
                 }
             }
         },
@@ -422,21 +423,22 @@ private fun RenderScope.TopAppBarRenderer(p: TopAppBarProps, baseModifier: Modif
 private fun RenderScope.BottomBarRenderer(p: BottomBarProps, baseModifier: Modifier) {
     val handler = LocalSduiActionHandler.current
     val vars = LocalVariables.current
-    val selectedValue = p.selectedBind?.let { vars.get(it)?.asDisplayString() }
+    // `selectedBind` admite el nombre directo o con `$` (se normaliza por `removePrefix`); la lectura
+    // del store es reactiva (005): al cambiar la variable, el ítem activo se recompone.
+    val selectedValue = p.selectedBind?.removePrefix("$")?.let { vars.get(it)?.asDisplayString() }
+    // Decodifica los ítems UNA vez por `node.children` (no en cada recomposición de la barra). Guard por
+    // `type`: con `ignoreUnknownKeys=true` cualquier child decodificaría a props por defecto (HU-3.2/4.2).
+    val items = remember(node.children) {
+        node.children
+            .filter { it.type == "bottomBarItem" }
+            .mapNotNull { child -> decodeOrNull<BottomBarItemProps>(child)?.let { child to it } }
+    }
     NavigationBar(modifier = baseModifier, windowInsets = EngineBarInsets) {
-        node.children.forEach { child ->
-            // Guard por `type`: con `ignoreUnknownKeys=true` cualquier child decodificaría a props
-            // por defecto; solo los `bottomBarItem` deben volverse ítems (HU-3.2/4.2).
-            if (child.type != "bottomBarItem") return@forEach
-            val item = decodeOrNull<BottomBarItemProps>(child) ?: return@forEach
+        items.forEach { (child, item) ->
             NavigationBarItem(
                 selected = isItemSelected(selectedValue, item.value),
                 onClick = { handler.handle(child.actions["onClick"].orEmpty()) },
-                icon = {
-                    val v = LocalIconRegistry.current.get(item.icon)
-                        ?: Icons.AutoMirrored.Outlined.HelpOutline
-                    Icon(v, contentDescription = null)
-                },
+                icon = { Icon(resolveIcon(item.icon), contentDescription = null) },
                 label = { Text(bind(item.label)) },
             )
         }

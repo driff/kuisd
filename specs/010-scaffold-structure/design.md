@@ -129,7 +129,7 @@ private fun RenderScope.TopAppBarRenderer(p: TopAppBarProps, baseModifier: Modif
 ```kotlin
 @Serializable
 data class BottomBarProps(
-    val selectedBind: String? = null,   // nombre DIRECTO de la variable (como textField.bind, 007)
+    val selectedBind: String? = null,   // nombre de la variable de selección; admite `$` opcional
 )
 
 @Serializable
@@ -145,19 +145,19 @@ register(sduiComponent<BottomBarProps>("bottomBar")) { p -> BottomBarRenderer(p,
 private fun RenderScope.BottomBarRenderer(p: BottomBarProps, baseModifier: Modifier) {
     val handler = LocalSduiActionHandler.current
     val vars = LocalVariables.current
-    // Lectura reactiva: si selectedBind != null, esta get() registra dependencia de snapshot (005).
-    val selectedValue = p.selectedBind?.let { vars.get(it)?.asDisplayString() }
+    // Lectura reactiva (registra snapshot, 005); `removePrefix("$")` normaliza el `$` opcional.
+    val selectedValue = p.selectedBind?.removePrefix("$")?.let { vars.get(it)?.asDisplayString() }
+    // Decodifica los ítems UNA vez por node.children (guard por type; HU-3.2/4.2), no por recomposición.
+    val items = remember(node.children) {
+        node.children.filter { it.type == "bottomBarItem" }
+            .mapNotNull { child -> decodeOrNull<BottomBarItemProps>(child)?.let { child to it } }
+    }
     NavigationBar(modifier = baseModifier) {
-        node.children.forEach { child ->
-            if (child.type != "bottomBarItem") return@forEach                     // guard por type (HU-3.2)
-            val item = decodeOrNull<BottomBarItemProps>(child) ?: return@forEach  // props inválidas → se ignora
+        items.forEach { (child, item) ->
             NavigationBarItem(
                 selected = isItemSelected(selectedValue, item.value),
                 onClick = { handler.handle(child.actions["onClick"].orEmpty()) },
-                icon = {
-                    val v = LocalIconRegistry.current.get(item.icon) ?: Icons.AutoMirrored.Outlined.HelpOutline
-                    Icon(v, contentDescription = null)
-                },
+                icon = { Icon(resolveIcon(item.icon), contentDescription = null) },   // helper compartido
                 label = { Text(bind(item.label)) },
             )
         }
@@ -173,9 +173,11 @@ internal fun isItemSelected(selectedValue: String?, itemValue: String): Boolean 
     `bottomBar`, que decodifica sus props directamente (`decodeOrNull`) y construye el `NavigationBarItem`
     (Material exige que el item sea hijo directo del `RowScope` de `NavigationBar`). Un `bottomBarItem`
     suelto en otro contenedor cae a `UnknownNode` (resiliencia 004, HU-4.2).
-  - `selectedBind` es el **nombre directo** de la variable (sin `$`), consistente con `textField.bind`
-    (007). Reconcilia HU-3.3: el motor lo lee reactivamente; el `$` no es necesario porque no es un
-    string de display sino un identificador de variable.
+  - `selectedBind` nombra la variable de selección. Acepta el **nombre directo** (como `textField.bind`,
+    007) o con `$` (se normaliza vía `removePrefix("$")`), para no chocar con la convención `$var` del
+    resto de props bindables (HU-3.3). El motor lo lee reactivamente (005).
+  - **Icono compartido:** los renderers resuelven el icono vía el helper `resolveIcon(name)`
+    (`LocalIconRegistry.current.get(name) ?: HelpOutline`), evitando duplicar el fallback.
   - `decodeOrNull<T>(node)` reutiliza `DefaultSduiJson.decodeFromJsonElement` con `runCatching` (mismo
     patrón que `RegisteredComponent.Render`); props inválidas ⇒ el ítem se ignora sin crash.
 
