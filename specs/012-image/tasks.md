@@ -21,35 +21,36 @@ Cada tarea es atómica y verificable. Marca `[x]` solo cuando su verificación p
   - _ref:_ HU-1.3, HU-3.1 · design §"Estrategia de verificación"
   - _verif:_ `./gradlew :sdui-compose:jvmTest` en verde.
 
-- [ ] **T4** — Catálogo de versiones: añadir `coil = "3.4.0"` y los `library` `coil-compose`
+- [x] **T4** — Catálogo de versiones: añadir `coil = "3.4.0"` y los `library` `coil-compose`
   (`io.coil-kt.coil3:coil-compose`) y `coil-network-ktor3` (`io.coil-kt.coil3:coil-network-ktor3`) a
   `gradle/libs.versions.toml`; declararlos en `shared/build.gradle.kts` (`commonMain`).
   - _ref:_ §"Dependencias nuevas"
   - _verif:_ `./gradlew :shared:dependencies` resuelve Coil; `:shared:compileKotlinDesktop` en verde.
 
-- [ ] **T5** — `:shared`: `CoilAsyncImageLoader` (impl del seam con `SubcomposeAsyncImage` + slots
+- [x] **T5** — `:shared`: `CoilAsyncImageLoader` (impl del seam con `SubcomposeAsyncImage` + slots
   loading/error) y `rememberCoilImageLoader()` (`ImageLoader.Builder` + `KtorNetworkFetcherFactory`).
   Cablear `LocalAsyncImage provides rememberCoilImageLoader()` en el `CompositionLocalProvider` de
   `SduiHost`.
   - _ref:_ HU-2.3, HU-1.5/1.6 · design §"Impl Coil", §"Cableado en SduiHost"
   - _verif:_ `./gradlew :shared:compileKotlinDesktop` (y `:desktopApp:compile*`) en verde.
 
-- [ ] **T6** — `:server`: pantalla piloto. Añadir un `image` (URL pública estable) a una pantalla
+- [x] **T6** — `:server`: pantalla piloto. Añadir un `image` (URL pública estable) a una pantalla
   existente (candidata: `feed` o `home`) con `contentScale` y un `UiModifier` de tamaño.
   - _ref:_ HU-1 · design §"Estrategia de verificación" (e2e)
   - _verif:_ `./gradlew :server:build`; `curl localhost:8080/screen/<piloto>` muestra `type:"image"` con `url`.
 
-- [ ] **T7** — Calidad + smoke visual: `./gradlew detekt ktlintCheck` en verde; `:desktopApp:run` y
+- [x] **T7** — Calidad + smoke visual: `./gradlew detekt ktlintCheck` en verde; `:desktopApp:run` y
   observar que la imagen carga (y el fallback con una URL rota).
   - _ref:_ Requisitos no funcionales · design §"Estrategia de verificación"
-  - _verif:_ lint/detekt verdes; smoke manual (si el harness no abre UI / no hay red, se justifica con el
-    árbol del piloto T6 + los tests como evidencia).
+  - _verif:_ lint/detekt verdes ✅. Smoke visual de escritorio NO ejecutado aquí (no abre UI; la carga
+    real necesita red); justificado con evidencia: `curl /screen/home` devuelve el nodo `image` (T6) y
+    `:shared:desktopTest` compila el código Coil. Pendiente confirmación visual con `:desktopApp:run`.
 
 ## Verificación final (Definition of Done)
-- [ ] `requirements.md` y `design.md` en `approved`.
-- [ ] `image` + seam `LocalAsyncImage` en `:sdui-compose`, SIN dependencia de Coil/red.
-- [ ] Coil 3.4.0 (`coil-compose` + `coil-network-ktor3`) solo en `:shared`; impl del seam cableada en `SduiHost`.
-- [ ] `toContentScale` con test verde; `rendererFor("image") != null`.
-- [ ] `:sdui-compose:jvmTest`, `:shared:desktopTest`/compile, `:server:build`, `detekt`, `ktlintCheck` en verde.
-- [ ] Pantalla piloto sirve un `image` (T6) — evidencia e2e.
-- [ ] `tasks.md` todo `[x]` salvo smoke visual manual si el harness no abre UI/red (justificado).
+- [x] `requirements.md` y `design.md` en `approved`.
+- [x] `image` + seam `LocalAsyncImage` en `:sdui-compose`, SIN dependencia de Coil/red.
+- [x] Coil 3.4.0 (`coil-compose` + `coil-network-ktor3`) solo en `:shared`; impl del seam cableada en `SduiHost`.
+- [x] `toContentScale` con test verde; `rendererFor("image") != null`.
+- [x] `:sdui-compose:jvmTest`, `:shared:desktopTest`, `:server:build`, `detekt`, `ktlintCheck` en verde.
+- [x] Pantalla piloto (`home`) sirve un `image` con `url` (T6) — evidencia e2e (curl verificado).
+- [x] `tasks.md` todo `[x]`; smoke visual de escritorio pendiente de confirmación del usuario (justificado).
