@@ -1,10 +1,14 @@
 package dev.kuisd.server.screens
 
+import dev.kuisd.sdui.core.DismissOverlay
 import dev.kuisd.sdui.core.EndpointStatus
 import dev.kuisd.sdui.core.FireEndpoint
 import dev.kuisd.sdui.core.PaddingTokens
 import dev.kuisd.sdui.core.SduiEnvelope
 import dev.kuisd.sdui.core.SduiNode
+import dev.kuisd.sdui.core.ShowBottomSheet
+import dev.kuisd.sdui.core.ShowDialog
+import dev.kuisd.sdui.core.ShowSnackbar
 import dev.kuisd.sdui.core.Tokens
 import dev.kuisd.sdui.core.UiModifier
 import kotlinx.serialization.json.JsonObject
@@ -40,6 +44,8 @@ object FormScreen : ScreenBuilder {
                 statusRow(),
                 bindingTextNode(id = "result", binding = "\$submitResult"),
                 submitButton(),
+                confirmDemoButton(),
+                sheetDemoButton(),
             ),
         ),
     )
@@ -99,6 +105,60 @@ object FormScreen : ScreenBuilder {
                     payloadVars = listOf("name"),
                     statusVar = "submitStatus",
                     resultVar = "submitResult",
+                ),
+            ),
+        ),
+    )
+
+    /**
+     * Demo de `ShowDialog` (spec 011): un diálogo de confirmación cuyo `onConfirm` lanza un snackbar
+     * y cuyo `onDismiss` cierra el overlay activo.
+     */
+    private fun confirmDemoButton(): SduiNode = SduiNode(
+        type = "button",
+        id = "confirm-demo",
+        props = JsonObject(mapOf("label" to JsonPrimitive("Confirmar algo"))),
+        actions = mapOf(
+            "onClick" to listOf(
+                ShowDialog(
+                    title = "¿Confirmar?",
+                    text = "Esto lanzará un aviso.",
+                    confirmLabel = "Sí",
+                    onConfirm = listOf(
+                        ShowSnackbar(message = "¡Confirmado!", actionLabel = "OK"),
+                    ),
+                    dismissLabel = "No",
+                    onDismiss = listOf(DismissOverlay),
+                ),
+            ),
+        ),
+    )
+
+    /**
+     * Demo de `ShowBottomSheet` (spec 011): abre una hoja con un subárbol renderizado por el host;
+     * su `onDismiss` cierra el overlay activo.
+     */
+    private fun sheetDemoButton(): SduiNode = SduiNode(
+        type = "button",
+        id = "sheet-demo",
+        props = JsonObject(mapOf("label" to JsonPrimitive("Abrir hoja"))),
+        actions = mapOf(
+            "onClick" to listOf(
+                ShowBottomSheet(
+                    content = listOf(
+                        SduiNode(
+                            type = "column",
+                            children = listOf(
+                                SduiNode(
+                                    type = "text",
+                                    props = JsonObject(
+                                        mapOf("text" to JsonPrimitive("Contenido de la hoja")),
+                                    ),
+                                ),
+                            ),
+                        ),
+                    ),
+                    onDismiss = listOf(DismissOverlay),
                 ),
             ),
         ),

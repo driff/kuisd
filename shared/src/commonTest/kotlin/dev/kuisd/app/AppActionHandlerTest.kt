@@ -1,19 +1,25 @@
 package dev.kuisd.app
 
+import androidx.compose.material3.SnackbarHostState
 import dev.kuisd.app.nav.NavActionHandler
 import dev.kuisd.app.nav.NavBackStack
 import dev.kuisd.app.variables.VariableActionHandler
 import dev.kuisd.app.variables.VariableStore
+import dev.kuisd.sdui.VariableScope
 import dev.kuisd.sdui.core.CustomAction
 import dev.kuisd.sdui.core.Increment
 import dev.kuisd.sdui.core.Navigate
 import dev.kuisd.sdui.core.SetVar
+import dev.kuisd.sdui.core.ShowDialog
 import dev.kuisd.sdui.core.Track
 import dev.kuisd.sdui.core.UiAction
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.serialization.json.JsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class AppActionHandlerTest {
@@ -76,6 +82,22 @@ class AppActionHandlerTest {
         // No crashea y no toca el store de variables.
         app.handle(listOf(Track(event = "tapped", props = mapOf("id" to "cta"))))
         assertTrue(store.vars.isEmpty())
+    }
+
+    @Test
+    fun overlay_action_is_handled_when_overlay_handler_present() {
+        val overlay = OverlayController()
+        val overlayHandler = OverlayActionHandler(
+            overlay = overlay,
+            snackbar = SnackbarHostState(),
+            scope = CoroutineScope(Dispatchers.Unconfined),
+            vars = VariableScope { null },
+        )
+        val app = AppActionHandler(listOf(overlayHandler))
+
+        app.handle(listOf(ShowDialog(title = "hi")))
+
+        assertNotNull(overlay.active)
     }
 
     @Test
