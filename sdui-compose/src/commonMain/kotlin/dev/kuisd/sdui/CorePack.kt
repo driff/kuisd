@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -381,24 +382,36 @@ private fun RenderScope.IconButtonRenderer(
  */
 @Composable
 private fun RenderScope.ImageRenderer(p: ImageProps, baseModifier: Modifier) {
+    // Aviso (una vez por par name/url): declarar ambos es ambiguo; `name` gana (convención `sduiLog`).
+    remember(p.name, p.url) {
+        if (p.name.isNotEmpty() && p.url.isNotEmpty()) {
+            sduiLog("image con 'name' y 'url' declarados; se usa 'name' (local)")
+        }
+    }
     // Un binding ausente resuelve a "" (resolveBinding); para a11y se trata como decorativa (null).
     val description = p.contentDescription?.let { bind(it) }?.ifEmpty { null }
     val scale = p.contentScale.toContentScale()
     val name = bind(p.name)
-    if (name.isNotEmpty()) {
-        val painter = LocalImageRegistry.current.get(name)
-        if (painter != null) {
-            Image(
-                painter = painter(),
-                contentDescription = description,
-                contentScale = scale,
-                modifier = baseModifier,
-            )
-        } else {
-            Box(baseModifier) // nombre local desconocido → hueco neutro (HU-1.5)
-        }
-    } else {
-        LocalAsyncImageLoader.current.Image(bind(p.url), description, scale, baseModifier)
+    val url = bind(p.url)
+    when {
+        name.isNotEmpty() ->
+            // `key(name)`: al cambiar de imagen local reactiva, no reusa el slot del painter anterior.
+            key(name) {
+                val painter = LocalImageRegistry.current.get(name)
+                if (painter != null) {
+                    Image(
+                        painter = painter(),
+                        contentDescription = description,
+                        contentScale = scale,
+                        modifier = baseModifier,
+                    )
+                } else {
+                    Box(baseModifier) // nombre local desconocido → hueco neutro (HU-1.5)
+                }
+            }
+
+        url.isNotEmpty() -> LocalAsyncImageLoader.current.Image(url, description, scale, baseModifier)
+        else -> Box(baseModifier) // ni name ni url → hueco neutro (HU-1.5)
     }
 }
 

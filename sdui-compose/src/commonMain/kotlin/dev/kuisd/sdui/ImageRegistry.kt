@@ -11,6 +11,10 @@ import androidx.compose.ui.graphics.painter.Painter
  * (008): composición por [plus] (override semantics). El valor es un **factory `@Composable`** porque
  * `painterResource` (Compose Resources) es `@Composable`. El motor no empaqueta assets: el registry base
  * es vacío y la app provee el suyo.
+ *
+ * Decisión: se replica deliberadamente la forma de `IconRegistry`/`ComponentRegistry` (Map + plus + get
+ * + Builder DSL) en vez de un `Registry<K,V>` genérico — los tipos de valor difieren (ImageVector vs
+ * `@Composable () -> Painter` vs `RegisteredComponent`) y la claridad por-tipo pesa más que el DRY aquí.
  */
 class ImageRegistry internal constructor(
     internal val byName: Map<String, @Composable () -> Painter>,
