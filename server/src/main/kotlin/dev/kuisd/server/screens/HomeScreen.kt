@@ -44,53 +44,60 @@ object HomeScreen : ScreenBuilder {
             padding = PaddingTokens(l = Tokens.Space.Md, t = Tokens.Space.Md),
         ),
         children = listOf(
-            SduiNode(
-                type = "text",
-                id = "title",
-                props = JsonObject(
-                    mapOf(
-                        "text" to JsonPrimitive("Bienvenido a kuisd"),
-                        "style" to JsonPrimitive(Tokens.Type.Title.ref),
-                    ),
-                ),
-            ),
-            SduiNode(
-                type = "image",
-                id = "banner",
-                modifier = UiModifier(fillMaxWidth = true),
-                props = JsonObject(
-                    mapOf(
-                        "url" to JsonPrimitive("https://picsum.photos/seed/kuisd/800/300"),
-                        "contentScale" to JsonPrimitive("crop"),
-                        "contentDescription" to JsonPrimitive("Imagen de portada"),
-                    ),
-                ),
-            ),
-            SduiNode(
-                type = "button",
-                id = "cta",
-                props = JsonObject(mapOf("label" to JsonPrimitive("Empezar"))),
-                actions = mapOf("onClick" to listOf(Navigate(route = "details"))),
-            ),
-            SduiNode(
-                type = "button",
-                id = "counter",
-                props = JsonObject(mapOf("label" to JsonPrimitive("Contador"))),
-                actions = mapOf("onClick" to listOf(Navigate(route = "counter"))),
-            ),
-            SduiNode(
-                type = "button",
-                id = "feed",
-                props = JsonObject(mapOf("label" to JsonPrimitive("Feed"))),
-                actions = mapOf("onClick" to listOf(Navigate(route = "feed"))),
-            ),
-            SduiNode(
-                type = "button",
-                id = "form",
-                props = JsonObject(mapOf("label" to JsonPrimitive("Formulario"))),
-                actions = mapOf("onClick" to listOf(Navigate(route = "form"))),
+            titleNode(),
+            logoNode(), // imagen local (013)
+            bannerNode(), // imagen remota (012)
+            navButton(id = "cta", label = "Empezar", route = "details"),
+            navButton(id = "counter", label = "Contador", route = "counter"),
+            navButton(id = "feed", label = "Feed", route = "feed"),
+            navButton(id = "form", label = "Formulario", route = "form"),
+        ),
+    )
+
+    private fun titleNode(): SduiNode = SduiNode(
+        type = "text",
+        id = "title",
+        props = JsonObject(
+            mapOf(
+                "text" to JsonPrimitive("Bienvenido a kuisd"),
+                "style" to JsonPrimitive(Tokens.Type.Title.ref),
             ),
         ),
+    )
+
+    /** Imagen LOCAL por nombre (spec 013): resuelta por el `ImageRegistry` de la app, sin red. */
+    private fun logoNode(): SduiNode = SduiNode(
+        type = "image",
+        id = "logo",
+        modifier = UiModifier(width = Tokens.Space.Xl, height = Tokens.Space.Xl),
+        props = JsonObject(
+            mapOf(
+                "name" to JsonPrimitive("kuisd_logo"),
+                "contentScale" to JsonPrimitive("fit"),
+                "contentDescription" to JsonPrimitive("Logo de kuisd"),
+            ),
+        ),
+    )
+
+    /** Imagen REMOTA por URL (spec 012): cargada por el seam Coil. */
+    private fun bannerNode(): SduiNode = SduiNode(
+        type = "image",
+        id = "banner",
+        modifier = UiModifier(fillMaxWidth = true),
+        props = JsonObject(
+            mapOf(
+                "url" to JsonPrimitive("https://picsum.photos/seed/kuisd/800/300"),
+                "contentScale" to JsonPrimitive("crop"),
+                "contentDescription" to JsonPrimitive("Imagen de portada"),
+            ),
+        ),
+    )
+
+    private fun navButton(id: String, label: String, route: String): SduiNode = SduiNode(
+        type = "button",
+        id = id,
+        props = JsonObject(mapOf("label" to JsonPrimitive(label))),
+        actions = mapOf("onClick" to listOf(Navigate(route = route))),
     )
 
     private fun bottomBarNode(): SduiNode = SduiNode(
