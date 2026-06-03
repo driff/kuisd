@@ -12,13 +12,24 @@ import dev.kuisd.sdui.core.UiAction
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 
-/** Texto del snackbar: messageVar (resuelto del store) o el literal message (HU-3.4). */
+/**
+ * Texto del snackbar: `messageVar` (resuelto del store, `$` opcional) o el literal `message` (HU-3.4).
+ * Una variable ausente o `JsonNull` cae al literal (no muestra "null").
+ */
 internal fun resolveSnackbarMessage(a: ShowSnackbar, scope: VariableScope): String =
-    a.messageVar?.removePrefix("$")?.let { scope.get(it)?.asPlainString() } ?: a.message
+    a.messageVar?.removePrefix("$")
+        ?.let { scope.get(it) }
+        ?.takeUnless { it is JsonNull }
+        ?.asPlainString()
+        ?: a.message
 
-/** Stringify seguro de un JsonElement sin depender del `asDisplayString` interno del motor. */
+/**
+ * Stringify seguro de un JsonElement. Duplica `asDisplayString` (RenderScope.kt, :sdui-compose), que es
+ * `internal` a ese módulo y no puede importarse desde `:shared`. TODO: centralizar en `:sdui-core`.
+ */
 internal fun JsonElement.asPlainString(): String = (this as? JsonPrimitive)?.content ?: toString()
 
 /** Mapea el string de duración del contrato al enum de Material (default Short). */
@@ -54,7 +65,11 @@ internal class OverlayActionHandler(
         when (action) {
             is ShowDialog -> overlay.showDialog(action)
             is ShowBottomSheet -> overlay.showSheet(action)
-            is DismissOverlay -> overlay.dismissAll()
+            is DismissOverlay -> {
+                overlay.dismissAll()
+                // También cierra el snackbar visible (un `indefinite` sin acción no se cerraría solo).
+                snackbar.currentSnackbarData?.dismiss()
+            }
             is ShowSnackbar -> scope.launch {
                 val result = snackbar.showSnackbar(
                     message = resolveSnackbarMessage(action, vars),

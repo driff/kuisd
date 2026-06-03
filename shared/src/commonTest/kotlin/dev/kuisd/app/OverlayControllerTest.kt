@@ -8,36 +8,32 @@ import kotlin.test.assertNull
 
 class OverlayControllerTest {
     @Test
-    fun showDialog_clears_sheet() {
+    fun showDialog_replaces_sheet() {
         val c = OverlayController()
         c.showSheet(ShowBottomSheet())
         c.showDialog(ShowDialog(title = "t"))
 
-        assertEquals(ShowDialog(title = "t"), c.dialog)
-        assertNull(c.sheet)
+        assertEquals(ActiveOverlay.Dialog(ShowDialog(title = "t")), c.active)
     }
 
     @Test
-    fun showSheet_clears_dialog() {
+    fun showSheet_replaces_dialog() {
         val c = OverlayController()
         c.showDialog(ShowDialog(title = "t"))
         c.showSheet(ShowBottomSheet())
 
-        assertEquals(ShowBottomSheet(), c.sheet)
-        assertNull(c.dialog)
+        assertEquals(ActiveOverlay.Sheet(ShowBottomSheet()), c.active)
     }
 
     @Test
-    fun dismissAll_clears_both() {
+    fun dismissAll_clears_active() {
         val c = OverlayController()
         c.showDialog(ShowDialog(title = "t"))
         c.dismissAll()
-        assertNull(c.dialog)
-        assertNull(c.sheet)
+        assertNull(c.active)
 
         c.showSheet(ShowBottomSheet())
         c.dismissAll()
-        assertNull(c.dialog)
-        assertNull(c.sheet)
+        assertNull(c.active)
     }
 }

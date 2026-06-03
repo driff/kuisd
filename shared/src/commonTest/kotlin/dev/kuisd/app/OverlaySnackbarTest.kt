@@ -3,6 +3,7 @@ package dev.kuisd.app
 import androidx.compose.material3.SnackbarDuration
 import dev.kuisd.sdui.VariableScope
 import dev.kuisd.sdui.core.ShowSnackbar
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -41,6 +42,14 @@ class OverlaySnackbarTest {
         val action = ShowSnackbar(message = "literal", messageVar = "\$data")
 
         assertEquals(obj.toString(), resolveSnackbarMessage(action, scope))
+    }
+
+    @Test
+    fun resolveSnackbarMessage_falls_back_when_var_is_json_null() {
+        val scope = VariableScope { name -> mapOf("x" to JsonNull)[name] }
+        val action = ShowSnackbar(message = "literal", messageVar = "\$x")
+
+        assertEquals("literal", resolveSnackbarMessage(action, scope))
     }
 
     @Test

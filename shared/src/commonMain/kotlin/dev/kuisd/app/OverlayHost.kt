@@ -13,6 +13,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import dev.kuisd.sdui.RenderNode
+import dev.kuisd.sdui.core.ShowBottomSheet
+import dev.kuisd.sdui.core.ShowDialog
 import dev.kuisd.sdui.core.UiAction
 
 /**
@@ -31,38 +33,55 @@ internal fun OverlayHost(
     Box(Modifier.fillMaxSize()) {
         SnackbarHost(snackbar, Modifier.align(Alignment.BottomCenter))
     }
-    overlay.dialog?.let { d ->
-        AlertDialog(
-            onDismissRequest = {
-                overlay.dismissAll()
-                dispatch(d.onDismiss)
-            },
-            title = d.title.takeIf { it.isNotBlank() }?.let { { Text(it) } },
-            text = d.text.takeIf { it.isNotBlank() }?.let { { Text(it) } },
-            confirmButton = {
-                d.confirmLabel?.let { l ->
-                    TextButton({
-                        overlay.dismissAll()
-                        dispatch(d.onConfirm)
-                    }) { Text(l) }
-                }
-            },
-            dismissButton = d.dismissLabel?.let { l ->
-                {
-                    TextButton({
-                        overlay.dismissAll()
-                        dispatch(d.onDismiss)
-                    }) { Text(l) }
-                }
-            },
-        )
+    // `AlertDialog`/`ModalBottomSheet` son ventanas Material (edge-to-edge), por eso el padding del host
+    // no las afecta; el `SnackbarHost` sí, por eso `OverlayHost` se monta fuera del `Box(padding)`.
+    when (val active = overlay.active) {
+        is ActiveOverlay.Dialog -> DialogOverlay(active.spec, overlay, dispatch)
+        is ActiveOverlay.Sheet -> SheetOverlay(active.spec, overlay, dispatch)
+        null -> Unit
     }
-    overlay.sheet?.let { s ->
-        ModalBottomSheet(onDismissRequest = {
+}
+
+/**
+ * Diálogo de confirmación. Nota: un `ShowDialog` sin `confirmLabel` ni `dismissLabel` se muestra sin
+ * botones (solo se cierra por scrim/back → `onDismiss`); si el server declara `onConfirm` debe
+ * acompañarlo de `confirmLabel`. No se inyecta un label por defecto para no materializar texto sin i18n.
+ */
+@Composable
+private fun DialogOverlay(d: ShowDialog, overlay: OverlayController, dispatch: (List<UiAction>) -> Unit) {
+    AlertDialog(
+        onDismissRequest = {
             overlay.dismissAll()
-            dispatch(s.onDismiss)
-        }) {
-            s.content.forEach { RenderNode(it) }
-        }
+            dispatch(d.onDismiss)
+        },
+        title = d.title.takeIf { it.isNotBlank() }?.let { { Text(it) } },
+        text = d.text.takeIf { it.isNotBlank() }?.let { { Text(it) } },
+        confirmButton = {
+            d.confirmLabel?.let { l ->
+                TextButton({
+                    overlay.dismissAll()
+                    dispatch(d.onConfirm)
+                }) { Text(l) }
+            }
+        },
+        dismissButton = d.dismissLabel?.let { l ->
+            {
+                TextButton({
+                    overlay.dismissAll()
+                    dispatch(d.onDismiss)
+                }) { Text(l) }
+            }
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SheetOverlay(s: ShowBottomSheet, overlay: OverlayController, dispatch: (List<UiAction>) -> Unit) {
+    ModalBottomSheet(onDismissRequest = {
+        overlay.dismissAll()
+        dispatch(s.onDismiss)
+    }) {
+        s.content.forEach { RenderNode(it) }
     }
 }

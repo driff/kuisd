@@ -42,16 +42,14 @@ class OverlayActionHandlerTest {
     fun showDialog_mutates_controller() {
         val overlay = OverlayController()
         newHandler(overlay).handle(listOf(ShowDialog(title = "hello")))
-        assertEquals(ShowDialog(title = "hello"), overlay.dialog)
-        assertNull(overlay.sheet)
+        assertEquals(ActiveOverlay.Dialog(ShowDialog(title = "hello")), overlay.active)
     }
 
     @Test
     fun showBottomSheet_mutates_controller() {
         val overlay = OverlayController()
         newHandler(overlay).handle(listOf(ShowBottomSheet()))
-        assertEquals(ShowBottomSheet(), overlay.sheet)
-        assertNull(overlay.dialog)
+        assertEquals(ActiveOverlay.Sheet(ShowBottomSheet()), overlay.active)
     }
 
     @Test
@@ -59,7 +57,6 @@ class OverlayActionHandlerTest {
         val overlay = OverlayController()
         overlay.showDialog(ShowDialog(title = "t"))
         newHandler(overlay).handle(listOf(DismissOverlay))
-        assertNull(overlay.dialog)
-        assertNull(overlay.sheet)
+        assertNull(overlay.active)
     }
 }

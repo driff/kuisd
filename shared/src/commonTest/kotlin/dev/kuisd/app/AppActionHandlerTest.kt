@@ -97,7 +97,7 @@ class AppActionHandlerTest {
 
         app.handle(listOf(ShowDialog(title = "hi")))
 
-        assertNotNull(overlay.dialog)
+        assertNotNull(overlay.active)
     }
 
     @Test

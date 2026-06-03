@@ -1,6 +1,7 @@
 package dev.kuisd.app
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
@@ -100,11 +101,15 @@ fun SduiHost(
                 LocalKuisdTheme provides theme,
                 LocalIconRegistry provides icons,
             ) {
-                Box(Modifier.padding(padding)) {
+                Box(Modifier.fillMaxSize()) {
+                    // El contenido lleva el padding del Scaffold del host (vía el modifier de SduiScreen);
+                    // el OverlayHost se monta a pantalla completa para que el SnackbarHost quede
+                    // edge-to-edge (las ventanas de dialog/sheet ignoran el padding de todos modos).
                     SduiScreen(
                         screenId = current.route,
                         source = source,
                         store = store,
+                        modifier = Modifier.padding(padding),
                     )
                     OverlayHost(overlay, snackbarHostState, dispatch = handler::handle)
                 }

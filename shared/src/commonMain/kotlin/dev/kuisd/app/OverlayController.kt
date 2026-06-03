@@ -7,33 +7,40 @@ import androidx.compose.runtime.setValue
 import dev.kuisd.sdui.core.ShowBottomSheet
 import dev.kuisd.sdui.core.ShowDialog
 
+/** Overlay activo del host (spec 011): un único `Dialog` o `Sheet`, nunca ambos (HU-1.6/2.5). */
+internal sealed interface ActiveOverlay {
+    data class Dialog(
+        val spec: ShowDialog,
+    ) : ActiveOverlay
+
+    data class Sheet(
+        val spec: ShowBottomSheet,
+    ) : ActiveOverlay
+}
+
 /**
  * Estado reactivo del overlay activo de la pantalla actual (spec 011). Vive en la app, no en el motor.
- * Un único overlay a la vez (HU-1.6/2.5): mostrar diálogo limpia la hoja y viceversa. Se crea dentro
- * del bloque `key(current.id)` del host, de modo que navegar descarta el overlay (reset-on-nav, HU-4.3).
+ * Un único overlay a la vez por construcción ([ActiveOverlay] sellado): mostrar diálogo u hoja sustituye
+ * al activo. Se crea dentro del bloque `key(current.id)` del host, de modo que navegar descarta el
+ * overlay (reset-on-nav, HU-4.3).
  */
 @Stable
 internal class OverlayController {
-    var dialog by mutableStateOf<ShowDialog?>(null)
-        private set
-    var sheet by mutableStateOf<ShowBottomSheet?>(null)
+    var active by mutableStateOf<ActiveOverlay?>(null)
         private set
 
-    /** Muestra el diálogo [a] cerrando cualquier hoja activa. */
+    /** Muestra el diálogo [a] como overlay activo (sustituye a cualquier hoja). */
     fun showDialog(a: ShowDialog) {
-        sheet = null
-        dialog = a
+        active = ActiveOverlay.Dialog(a)
     }
 
-    /** Muestra la hoja [a] cerrando cualquier diálogo activo. */
+    /** Muestra la hoja [a] como overlay activo (sustituye a cualquier diálogo). */
     fun showSheet(a: ShowBottomSheet) {
-        dialog = null
-        sheet = a
+        active = ActiveOverlay.Sheet(a)
     }
 
-    /** Cierra el overlay activo (diálogo y hoja). */
+    /** Cierra el overlay activo (diálogo u hoja). */
     fun dismissAll() {
-        dialog = null
-        sheet = null
+        active = null
     }
 }
