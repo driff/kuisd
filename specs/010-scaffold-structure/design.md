@@ -54,9 +54,11 @@ internal fun partitionScaffoldSlots(children: List<SduiNode>): ScaffoldSlots
 - **API (firmas):**
 ```kotlin
 @Serializable
-class ScaffoldProps   // sin campos propios: todo viene de children + UiModifier del nodo
+data class ScaffoldProps(
+    val contentDirection: String = "column",   // "column" (default) | "row": cómo se apila el content
+)
 
-register(sduiComponent<ScaffoldProps>("scaffold")) { ScaffoldRenderer(modifier) }
+register(sduiComponent<ScaffoldProps>("scaffold")) { p -> ScaffoldRenderer(p, modifier) }
 
 @Composable
 private fun RenderScope.ScaffoldRenderer(baseModifier: Modifier) {
@@ -66,15 +68,19 @@ private fun RenderScope.ScaffoldRenderer(baseModifier: Modifier) {
         topBar = { slots.topBar?.let { RenderNode(it) } },
         bottomBar = { slots.bottomBar?.let { RenderNode(it) } },
     ) { innerPadding ->
-        Box(Modifier.padding(innerPadding)) {
-            slots.content.forEach { RenderNode(it) }
+        val contentModifier = Modifier.padding(innerPadding)
+        if (p.contentDirection == "row") {
+            Row(contentModifier) { slots.content.forEach { RenderNode(it) } }
+        } else {
+            Column(contentModifier) { slots.content.forEach { RenderNode(it) } }
         }
     }
 }
 ```
-- **Decisiones:** el `padding(innerPadding)` se aplica en un `Box` envoltorio del content (RenderNode no
-  acepta modifier); cada child de content conserva su propio `UiModifier`. `topBar`/`bottomBar` ausentes
-  ⇒ lambda vacía (slot omitido por Material).
+- **Decisiones:** el content se apila en un `Column` (default) o `Row` (`contentDirection`), NO en un
+  `Box` — un `Box` solaparía 2+ nodos de content (hallazgo de code-review P2). `padding(innerPadding)`
+  va en ese contenedor; cada child conserva su propio `UiModifier`. `topBar`/`bottomBar` ausentes ⇒
+  lambda vacía (slot omitido por Material).
 
 ### `topAppBar`
 - **Ubicación:** `CorePack.kt`

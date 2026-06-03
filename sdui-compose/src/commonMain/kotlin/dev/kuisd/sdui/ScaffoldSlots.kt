@@ -38,8 +38,12 @@ internal fun isItemSelected(selectedValue: String?, itemValue: String): Boolean 
     selectedValue != null && selectedValue == itemValue
 
 /**
- * Decodifica las `props` de [node] a [T] reutilizando `DefaultSduiJson` (mismo patrón que
- * `RegisteredComponent.Render`); props inválidas ⇒ `null` sin crash (HU-3, HU-4.2).
+ * Decodifica las `props` de [node] a [T] reutilizando `DefaultSduiJson`. Misma política que
+ * `RegisteredComponent.Render` (props inválidas ⇒ `null` sin crash + `sduiLog` diagnóstico), pero con
+ * `serializer<T>()` reificado porque los hijos decodificados a mano (p.ej. `bottomBarItem`) no tienen
+ * un `RegisteredComponent` al que delegar (HU-3, HU-4.2).
  */
 internal inline fun <reified T : Any> decodeOrNull(node: SduiNode): T? =
-    runCatching { DefaultSduiJson.decodeFromJsonElement(serializer<T>(), node.props) }.getOrNull()
+    runCatching { DefaultSduiJson.decodeFromJsonElement(serializer<T>(), node.props) }
+        .onFailure { sduiLog("props inválidas para type='${node.type}', se ignora: ${it.message}") }
+        .getOrNull()

@@ -1,6 +1,5 @@
 package dev.kuisd.sdui
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -130,9 +129,15 @@ data class IconButtonProps(
     val contentDescription: String? = null,
 )
 
-/** Sin campos propios: los slots vienen de los children y la apariencia del `UiModifier` (HU-1). */
+/**
+ * Slots por children + apariencia del `UiModifier` (HU-1). `contentDirection` decide cómo se apilan
+ * los nodos del slot content: `"column"` (vertical, por defecto) o `"row"` (horizontal). Sin esto, un
+ * content de 2+ nodos se solaparía en un `Box`.
+ */
 @Serializable
-class ScaffoldProps
+data class ScaffoldProps(
+    val contentDirection: String = "column",
+)
 
 /** Barra superior: título bindable e icono de navegación opcional (HU-2). */
 @Serializable
@@ -204,7 +209,7 @@ val CorePack: ComponentRegistry = componentRegistry {
     register(sduiComponent<IconButtonProps>("iconButton")) { p ->
         IconButtonRenderer(p, modifier, node.actions["onClick"].orEmpty())
     }
-    register(sduiComponent<ScaffoldProps>("scaffold")) { ScaffoldRenderer(modifier) }
+    register(sduiComponent<ScaffoldProps>("scaffold")) { p -> ScaffoldRenderer(p, modifier) }
     register(sduiComponent<TopAppBarProps>("topAppBar")) { p -> TopAppBarRenderer(p, modifier) }
     register(sduiComponent<BottomBarProps>("bottomBar")) { p -> BottomBarRenderer(p, modifier) }
 }
@@ -360,11 +365,11 @@ private val EngineBarInsets = WindowInsets(0, 0, 0, 0)
 
 /**
  * Renderer del `scaffold`: monta `material3.Scaffold` con los slots resueltos por `type` (HU-1).
- * El `innerPadding` se aplica a un `Box` envoltorio del content (RenderNode no acepta modifier);
- * cada child conserva su propio `UiModifier`. Barras ausentes ⇒ lambda vacía (slot omitido).
+ * El `innerPadding` se aplica al `Column`/`Row` que envuelve el content (RenderNode no acepta
+ * modifier); cada child conserva su propio `UiModifier`. Barras ausentes ⇒ lambda vacía (slot omitido).
  */
 @Composable
-private fun RenderScope.ScaffoldRenderer(baseModifier: Modifier) {
+private fun RenderScope.ScaffoldRenderer(p: ScaffoldProps, baseModifier: Modifier) {
     val slots = remember(node.children) { partitionScaffoldSlots(node.children) }
     Scaffold(
         modifier = baseModifier,
@@ -372,8 +377,12 @@ private fun RenderScope.ScaffoldRenderer(baseModifier: Modifier) {
         topBar = { slots.topBar?.let { RenderNode(it) } },
         bottomBar = { slots.bottomBar?.let { RenderNode(it) } },
     ) { innerPadding ->
-        Box(Modifier.padding(innerPadding)) {
-            slots.content.forEach { RenderNode(it) }
+        // Apila el content (no `Box`, que solaparía 2+ nodos). `row` → horizontal; resto → vertical.
+        val contentModifier = Modifier.padding(innerPadding)
+        if (p.contentDirection == "row") {
+            Row(contentModifier) { slots.content.forEach { RenderNode(it) } }
+        } else {
+            Column(contentModifier) { slots.content.forEach { RenderNode(it) } }
         }
     }
 }
