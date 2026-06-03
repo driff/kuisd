@@ -1,8 +1,10 @@
 package dev.kuisd.app
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -72,6 +74,9 @@ fun SduiHost(
             val store = remember { VariableStore() }
             val scope = rememberCoroutineScope()
             val fire = remember { FireEndpointActionHandler(scope, actionEndpoint, store) }
+            val overlay = remember { OverlayController() }
+            val snackbarHostState = remember { SnackbarHostState() }
+            val overlayHandler = remember { OverlayActionHandler(overlay, snackbarHostState, scope, store.scope) }
             val handler = remember {
                 AppActionHandler(
                     listOf(
@@ -79,11 +84,14 @@ fun SduiHost(
                         VariableActionHandler(store),
                         TrackActionHandler(),
                         fire,
+                        overlayHandler,
                     ),
                 )
             }
             // Rompe el ciclo handler<->compuesto: el FireEndpoint re-despacha por el compuesto.
             fire.dispatch = handler::handle
+            // El snackbar re-despacha su onAction asíncrono por el compuesto.
+            overlayHandler.dispatch = handler::handle
 
             CompositionLocalProvider(
                 LocalSduiActionHandler provides handler,
@@ -92,12 +100,14 @@ fun SduiHost(
                 LocalKuisdTheme provides theme,
                 LocalIconRegistry provides icons,
             ) {
-                SduiScreen(
-                    screenId = current.route,
-                    source = source,
-                    store = store,
-                    modifier = Modifier.padding(padding),
-                )
+                Box(Modifier.padding(padding)) {
+                    SduiScreen(
+                        screenId = current.route,
+                        source = source,
+                        store = store,
+                    )
+                    OverlayHost(overlay, snackbarHostState, dispatch = handler::handle)
+                }
             }
         }
     }
