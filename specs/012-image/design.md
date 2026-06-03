@@ -3,7 +3,7 @@
 > Spec ID: 012 · Estado: approved · Trazabilidad: ./requirements.md
 
 ## Enfoque
-Un componente `image` en `CorePack` que delega la carga a un **seam** `LocalAsyncImage` (mismo patrón
+Un componente `image` en `CorePack` que delega la carga a un **seam** `LocalAsyncImageLoader` (mismo patrón
 que `LocalIconRegistry`/`LocalComponentRegistry`, 008/004). El motor (`:sdui-compose`) queda **agnóstico
 al loader** y sin dependencia de red: define el seam + un default neutro. La app (`:shared`) implementa
 el seam con **Coil 3** (`coil-compose` + `coil-network-ktor3`) y lo provee en `SduiHost`. El mapeo
@@ -12,19 +12,19 @@ bindables (`bind`, 005); el `UiModifier` (tamaño/forma, 008) se aplica al compo
 
 ## Arquitectura
 - **`:sdui-compose`** (`commonMain`):
-  - `AsyncImage.kt` (nuevo) — `fun interface AsyncImageLoader` (`@Composable`), `LocalAsyncImage`
+  - `AsyncImage.kt` (nuevo) — `fun interface AsyncImageLoader` (`@Composable`), `LocalAsyncImageLoader`
     (`staticCompositionLocalOf` con default `DefaultAsyncImageLoader`), y `String.toContentScale()`.
   - `CorePack.kt` (editar) — `ImageProps` + `register("image")` + `ImageRenderer` privado.
 - **`:shared`** (`commonMain`): `CoilAsyncImageLoader` (impl del seam con `SubcomposeAsyncImage`), y un
   `rememberCoilImageLoader()` que construye el `coil3.ImageLoader` (con `KtorNetworkFetcherFactory`).
-  `SduiHost.kt` provee `LocalAsyncImage` en el `CompositionLocalProvider`.
+  `SduiHost.kt` provee `LocalAsyncImageLoader` en el `CompositionLocalProvider`.
 - **catálogo de versiones** (`gradle/libs.versions.toml`): añadir `coil`.
 - **`:server`** (editar, demo): un `image` en una pantalla piloto.
 - `:sdui-compose` NO gana dependencias de Coil/red (HU-2.4).
 
 ```
 image node ─► ImageRenderer (CorePack)
-                 └─ LocalAsyncImage.current.Image(url=bind, desc=bind, scale, modifier=UiModifier)
+                 └─ LocalAsyncImageLoader.current.Image(url=bind, desc=bind, scale, modifier=UiModifier)
                        ├─ (app)   CoilAsyncImageLoader → SubcomposeAsyncImage(Coil) [loading/error]
                        └─ (motor) DefaultAsyncImageLoader → Box(modifier) neutro (sin host/tests)
 ```
@@ -42,9 +42,10 @@ fun interface AsyncImageLoader {
 /** Default neutro: un hueco del tamaño del modifier. Permite usar `image` sin host (tests/preview). */
 val DefaultAsyncImageLoader = AsyncImageLoader { _, _, _, modifier -> Box(modifier) }
 
-val LocalAsyncImage: ProvidableCompositionLocal<AsyncImageLoader> =
+val LocalAsyncImageLoader: ProvidableCompositionLocal<AsyncImageLoader> =
     staticCompositionLocalOf { DefaultAsyncImageLoader }
 
+// `toContentScale` vive en el paquete `dev.kuisd.sdui.modifier` (junto a `toHorizontalAlignment`).
 /** Mapea el string del contrato a `ContentScale` de Compose (default Fit). Pura, testeable. */
 internal fun String.toContentScale(): ContentScale = when (this) {
     "crop" -> ContentScale.Crop
@@ -68,7 +69,7 @@ register(sduiComponent<ImageProps>("image")) { p -> ImageRenderer(p, modifier) }
 
 @Composable
 private fun RenderScope.ImageRenderer(p: ImageProps, baseModifier: Modifier) {
-    LocalAsyncImage.current.Image(
+    LocalAsyncImageLoader.current.Image(
         url = bind(p.url),
         contentDescription = p.contentDescription?.let { bind(it) },
         contentScale = p.contentScale.toContentScale(),
@@ -105,6 +106,7 @@ internal fun rememberCoilImageLoader(): AsyncImageLoader {
     }
     return remember(coil) { CoilAsyncImageLoader(coil) }
 }
+// `DisposableEffect(coil) { onDispose { coil.shutdown() } }` libera caches + HttpClient al desmontar.
 ```
 - **Decisión:** `KtorNetworkFetcherFactory()` usa su propio cliente Ktor (engine de plataforma ya en el
   classpath: okhttp/darwin/cio). Reusar el `HttpClient` de `SduiClient` (hoy `internal`, sin exponer)
@@ -117,7 +119,7 @@ val asyncImage = rememberCoilImageLoader()
 …
 CompositionLocalProvider(
     /* … los 5 actuales … */,
-    LocalAsyncImage provides asyncImage,
+    LocalAsyncImageLoader provides asyncImage,
 ) { … }
 ```
 

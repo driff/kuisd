@@ -26,7 +26,7 @@ import dev.kuisd.app.nav.NavBackStack
 import dev.kuisd.app.theme.rememberAppTheme
 import dev.kuisd.app.variables.VariableActionHandler
 import dev.kuisd.app.variables.VariableStore
-import dev.kuisd.sdui.LocalAsyncImage
+import dev.kuisd.sdui.LocalAsyncImageLoader
 import dev.kuisd.sdui.LocalComponentRegistry
 import dev.kuisd.sdui.LocalSduiActionHandler
 import dev.kuisd.sdui.LocalVariables
@@ -102,7 +102,7 @@ fun SduiHost(
                 LocalVariables provides store.scope,
                 LocalKuisdTheme provides theme,
                 LocalIconRegistry provides icons,
-                LocalAsyncImage provides asyncImage,
+                LocalAsyncImageLoader provides asyncImage,
             ) {
                 Box(Modifier.fillMaxSize()) {
                     // El contenido lleva el padding del Scaffold del host (vía el modifier de SduiScreen);

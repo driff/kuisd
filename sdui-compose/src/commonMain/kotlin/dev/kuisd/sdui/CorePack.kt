@@ -45,6 +45,7 @@ import dev.kuisd.sdui.core.SpaceToken
 import dev.kuisd.sdui.core.Tokens
 import dev.kuisd.sdui.core.sduiComponent
 import dev.kuisd.sdui.icons.LocalIconRegistry
+import dev.kuisd.sdui.modifier.toContentScale
 import dev.kuisd.sdui.theme.LocalKuisdTheme
 import kotlinx.coroutines.flow.drop
 import kotlinx.serialization.Serializable
@@ -129,7 +130,10 @@ data class IconButtonProps(
     val contentDescription: String? = null,
 )
 
-/** Imagen remota (spec 012). `url`/`contentDescription` bindables; carga vía seam `LocalAsyncImage`. */
+/**
+ * Imagen remota por URL (spec 012). `url`/`contentDescription` bindables (005); carga vía seam
+ * `LocalAsyncImageLoader`. Solo URL remota en v1 (imágenes locales/empaquetadas fuera de alcance).
+ */
 @Serializable
 data class ImageProps(
     val url: String = "",
@@ -371,9 +375,10 @@ private fun RenderScope.IconButtonRenderer(
  */
 @Composable
 private fun RenderScope.ImageRenderer(p: ImageProps, baseModifier: Modifier) {
-    LocalAsyncImage.current.Image(
+    LocalAsyncImageLoader.current.Image(
         url = bind(p.url),
-        contentDescription = p.contentDescription?.let { bind(it) },
+        // Un binding ausente resuelve a "" (resolveBinding); para a11y se trata como decorativa (null).
+        contentDescription = p.contentDescription?.let { bind(it) }?.ifEmpty { null },
         contentScale = p.contentScale.toContentScale(),
         modifier = baseModifier,
     )

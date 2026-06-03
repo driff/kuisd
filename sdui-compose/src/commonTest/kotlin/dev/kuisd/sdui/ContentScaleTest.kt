@@ -1,6 +1,7 @@
 package dev.kuisd.sdui
 
 import androidx.compose.ui.layout.ContentScale
+import dev.kuisd.sdui.modifier.toContentScale
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

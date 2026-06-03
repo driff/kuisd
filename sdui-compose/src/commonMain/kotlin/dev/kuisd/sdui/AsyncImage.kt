@@ -10,6 +10,9 @@ import androidx.compose.ui.layout.ContentScale
 /**
  * Seam de carga de imágenes (spec 012): la app lo implementa (Coil) y el motor queda **agnóstico** al
  * loader, sin dependencia de red. Mismo patrón de seam que `LocalIconRegistry`/`LocalComponentRegistry`.
+ *
+ * Alcance v1: solo imágenes **remotas por URL**; imágenes locales/empaquetadas quedan fuera (un
+ * `ImageRegistry` análogo al `IconRegistry` sería el follow-up).
  */
 fun interface AsyncImageLoader {
     @Composable
@@ -19,15 +22,12 @@ fun interface AsyncImageLoader {
 /** Default neutro: un hueco del tamaño del `modifier`. Permite usar `image` sin host (tests/preview). */
 val DefaultAsyncImageLoader = AsyncImageLoader { _, _, _, modifier -> Box(modifier) }
 
-/** Seam de SOLO LECTURA del loader de imágenes; la app provee el suyo (Coil) por `SduiHost`. */
-val LocalAsyncImage: ProvidableCompositionLocal<AsyncImageLoader> =
+/**
+ * Seam de SOLO LECTURA del loader de imágenes; la app provee el suyo (Coil) por `SduiHost`.
+ *
+ * Nota de layout: un `image` con `fillMaxWidth` **sin alto acotado** sigue el tamaño intrínseco de la
+ * imagen tras cargar; durante la carga el placeholder puede colapsar a 0 de alto. El server debería
+ * fijar un alto/`aspectRatio` para layouts predecibles (no hay `aspectRatio` en el contrato v1).
+ */
+val LocalAsyncImageLoader: ProvidableCompositionLocal<AsyncImageLoader> =
     staticCompositionLocalOf { DefaultAsyncImageLoader }
-
-/** Mapea el string del contrato a `ContentScale` de Compose (default `Fit`). Pura, testeable. */
-internal fun String.toContentScale(): ContentScale = when (this) {
-    "crop" -> ContentScale.Crop
-    "fillBounds" -> ContentScale.FillBounds
-    "inside" -> ContentScale.Inside
-    "none" -> ContentScale.None
-    else -> ContentScale.Fit
-}
