@@ -129,6 +129,14 @@ data class IconButtonProps(
     val contentDescription: String? = null,
 )
 
+/** Imagen remota (spec 012). `url`/`contentDescription` bindables; carga vía seam `LocalAsyncImage`. */
+@Serializable
+data class ImageProps(
+    val url: String = "",
+    val contentScale: String = "fit", // crop|fit|fillBounds|inside|none
+    val contentDescription: String? = null,
+)
+
 /**
  * Slots por children + apariencia del `UiModifier` (HU-1). `contentDirection` decide cómo se apilan
  * los nodos del slot content: `"column"` (vertical, por defecto) o `"row"` (horizontal). Sin esto, un
@@ -212,6 +220,7 @@ val CorePack: ComponentRegistry = componentRegistry {
     register(sduiComponent<ScaffoldProps>("scaffold")) { p -> ScaffoldRenderer(p, modifier) }
     register(sduiComponent<TopAppBarProps>("topAppBar")) { p -> TopAppBarRenderer(p, modifier) }
     register(sduiComponent<BottomBarProps>("bottomBar")) { p -> BottomBarRenderer(p, modifier) }
+    register(sduiComponent<ImageProps>("image")) { p -> ImageRenderer(p, modifier) }
 }
 
 /**
@@ -354,6 +363,20 @@ private fun RenderScope.IconButtonRenderer(
             tint = theme.resolveColorOrNull(p.tint) ?: LocalContentColor.current,
         )
     }
+}
+
+/**
+ * Renderer del `image` (spec 012): delega la carga al seam `LocalAsyncImage` (la app lo provee con
+ * Coil). `url`/`contentDescription` bindables (005); el `UiModifier` (tamaño/forma, 008) va al loader.
+ */
+@Composable
+private fun RenderScope.ImageRenderer(p: ImageProps, baseModifier: Modifier) {
+    LocalAsyncImage.current.Image(
+        url = bind(p.url),
+        contentDescription = p.contentDescription?.let { bind(it) },
+        contentScale = p.contentScale.toContentScale(),
+        modifier = baseModifier,
+    )
 }
 
 /**

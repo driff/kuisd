@@ -4,19 +4,19 @@
 
 Cada tarea es atómica y verificable. Marca `[x]` solo cuando su verificación pasa.
 
-- [ ] **T1** — `:sdui-compose`: `AsyncImage.kt` con `fun interface AsyncImageLoader` (`@Composable
+- [x] **T1** — `:sdui-compose`: `AsyncImage.kt` con `fun interface AsyncImageLoader` (`@Composable
   Image(url, contentDescription, contentScale, modifier)`), `DefaultAsyncImageLoader` (Box neutro),
   `LocalAsyncImage` (`staticCompositionLocalOf`) y `String.toContentScale()` (puro).
   - _ref:_ HU-2.1/2.2 · design §"Seam"
   - _verif:_ `./gradlew :sdui-compose:compileKotlinJvm`; cubierto por el test de T3.
 
-- [ ] **T2** — `:sdui-compose`: `ImageProps(url, contentScale="fit", contentDescription?)` +
+- [x] **T2** — `:sdui-compose`: `ImageProps(url, contentScale="fit", contentDescription?)` +
   `register("image")` + `ImageRenderer` (llama a `LocalAsyncImage.current.Image` con `bind(url)`,
   `bind(contentDescription)`, `toContentScale`, `modifier`).
   - _ref:_ HU-1.1/1.2/1.3/1.4, HU-3.1/3.3 · design §"image"
   - _verif:_ compila; `rendererFor("image") != null` (T3).
 
-- [ ] **T3** — `:sdui-compose` tests (commonTest): `ContentScaleTest` (`toContentScale`: crop/fit/
+- [x] **T3** — `:sdui-compose` tests (commonTest): `ContentScaleTest` (`toContentScale`: crop/fit/
   fillBounds/inside/none/desconocido→Fit) y ampliar `ComponentRegistryTest` (`rendererFor("image")`).
   - _ref:_ HU-1.3, HU-3.1 · design §"Estrategia de verificación"
   - _verif:_ `./gradlew :sdui-compose:jvmTest` en verde.
