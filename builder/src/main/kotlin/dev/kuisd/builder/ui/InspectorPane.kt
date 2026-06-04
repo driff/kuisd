@@ -23,7 +23,7 @@ import androidx.compose.ui.unit.dp
 import dev.kuisd.builder.catalog.FieldEditor
 import dev.kuisd.builder.catalog.FieldSpec
 import dev.kuisd.builder.catalog.FieldTarget
-import dev.kuisd.builder.catalog.builderCatalog
+import dev.kuisd.builder.catalog.catalogByType
 import dev.kuisd.sdui.core.SduiNode
 import dev.kuisd.sdui.core.UiModifier
 import kotlinx.serialization.json.JsonObject
@@ -43,7 +43,7 @@ internal fun InspectorPane(
             return@Column
         }
         Text("Inspector · ${node.type}", style = MaterialTheme.typography.titleSmall)
-        val entry = builderCatalog.firstOrNull { it.type == node.type }
+        val entry = catalogByType[node.type]
         if (entry == null || entry.fields.isEmpty()) {
             Text("Sin campos editables", style = MaterialTheme.typography.bodySmall)
             return@Column
@@ -64,12 +64,12 @@ private fun FieldRow(
     when (field.editor) {
         FieldEditor.Bool -> BoolField(node, field, onModifier, onProps)
         FieldEditor.Enum -> EnumField(node, field, onProps)
-        FieldEditor.Text -> TextField(node, field, onProps)
+        FieldEditor.Text -> TextFieldEditor(node, field, onProps)
     }
 }
 
 @Composable
-private fun TextField(node: SduiNode, field: FieldSpec, onProps: (JsonObject) -> Unit) {
+private fun TextFieldEditor(node: SduiNode, field: FieldSpec, onProps: (JsonObject) -> Unit) {
     val current = propValue(node, field.key)
     OutlinedTextField(
         value = current,

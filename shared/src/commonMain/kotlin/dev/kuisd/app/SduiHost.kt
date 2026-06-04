@@ -16,25 +16,14 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import dev.kuisd.app.components.appRegistry
 import dev.kuisd.app.data.KtorActionEndpoint
 import dev.kuisd.app.data.KtorScreenSource
 import dev.kuisd.app.data.SduiClient
-import dev.kuisd.app.icons.appIconsOverride
-import dev.kuisd.app.image.appImageRegistry
 import dev.kuisd.app.nav.NavActionHandler
 import dev.kuisd.app.nav.NavBackStack
-import dev.kuisd.app.theme.rememberAppTheme
 import dev.kuisd.app.variables.VariableActionHandler
 import dev.kuisd.app.variables.VariableStore
 import dev.kuisd.sdui.LocalAsyncImageLoader
-import dev.kuisd.sdui.LocalComponentRegistry
-import dev.kuisd.sdui.LocalImageRegistry
-import dev.kuisd.sdui.LocalSduiActionHandler
-import dev.kuisd.sdui.LocalVariables
-import dev.kuisd.sdui.icons.DefaultIconRegistry
-import dev.kuisd.sdui.icons.LocalIconRegistry
-import dev.kuisd.sdui.theme.LocalKuisdTheme
 
 /**
  * Host de navegación SDUI: dueño del [NavBackStack] y de un único [SduiClient] compartido por el
@@ -56,9 +45,6 @@ fun SduiHost(
         onDispose { sharedClient.close() }
     }
 
-    val theme = rememberAppTheme()
-    val icons = remember { DefaultIconRegistry + appIconsOverride() }
-    val images = remember { appImageRegistry() }
     val asyncImage = rememberCoilImageLoader()
 
     val current = backStack.current
@@ -99,26 +85,22 @@ fun SduiHost(
             // El snackbar re-despacha su onAction asíncrono por el compuesto.
             overlayHandler.dispatch = handler::handle
 
-            CompositionLocalProvider(
-                LocalSduiActionHandler provides handler,
-                LocalComponentRegistry provides appRegistry,
-                LocalVariables provides store.scope,
-                LocalKuisdTheme provides theme,
-                LocalIconRegistry provides icons,
-                LocalImageRegistry provides images,
-                LocalAsyncImageLoader provides asyncImage,
-            ) {
-                Box(Modifier.fillMaxSize()) {
-                    // El contenido lleva el padding del Scaffold del host (vía el modifier de SduiScreen);
-                    // el OverlayHost se monta a pantalla completa para que el SnackbarHost quede
-                    // edge-to-edge (las ventanas de dialog/sheet ignoran el padding de todos modos).
-                    SduiScreen(
-                        screenId = current.route,
-                        source = source,
-                        store = store,
-                        modifier = Modifier.padding(padding),
-                    )
-                    OverlayHost(overlay, snackbarHostState, dispatch = handler::handle)
+            // Reutiliza los seams de la app vía SduiPreviewEnvironment (mismos provides que el builder,
+            // sin drift) y añade el loader de imágenes remotas (Coil) ligado al ciclo del host.
+            SduiPreviewEnvironment(actionHandler = handler, variables = store.scope) {
+                CompositionLocalProvider(LocalAsyncImageLoader provides asyncImage) {
+                    Box(Modifier.fillMaxSize()) {
+                        // El contenido lleva el padding del Scaffold del host (vía el modifier de SduiScreen);
+                        // el OverlayHost se monta a pantalla completa para que el SnackbarHost quede
+                        // edge-to-edge (las ventanas de dialog/sheet ignoran el padding de todos modos).
+                        SduiScreen(
+                            screenId = current.route,
+                            source = source,
+                            store = store,
+                            modifier = Modifier.padding(padding),
+                        )
+                        OverlayHost(overlay, snackbarHostState, dispatch = handler::handle)
+                    }
                 }
             }
         }

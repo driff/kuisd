@@ -13,14 +13,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.kuisd.builder.catalog.Category
 import dev.kuisd.builder.catalog.PaletteEntry
-import dev.kuisd.builder.catalog.builderCatalog
+import dev.kuisd.builder.catalog.catalogByCategory
 
 /** Paleta de componentes agrupada por categoría; al pulsar una entrada se inserta su plantilla. */
 @Composable
 internal fun PalettePane(onAdd: (PaletteEntry) -> Unit, modifier: Modifier = Modifier) {
     LazyColumn(modifier) {
         Category.entries.forEach { category ->
-            val entries = builderCatalog.filter { it.category == category }
+            val entries = catalogByCategory[category].orEmpty()
             if (entries.isEmpty()) return@forEach
             item(key = "cat-${category.name}") {
                 Text(

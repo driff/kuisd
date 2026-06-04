@@ -35,7 +35,9 @@ class BuilderDocument {
 
     fun delete(id: String) {
         root = TreeOps.delete(root, id)
-        if (selectedId == id) selectedId = "root"
+        // Resetea la selección si el nodo seleccionado dejó de existir (p.ej. al borrar un ancestro).
+        val current = selectedId
+        if (current == null || TreeOps.findById(root, current) == null) selectedId = "root"
     }
 
     fun updateProps(id: String, props: JsonObject) {

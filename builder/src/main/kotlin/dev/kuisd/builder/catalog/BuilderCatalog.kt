@@ -193,3 +193,9 @@ val builderCatalog: List<PaletteEntry> = listOf(
         ),
     ),
 )
+
+/** Catálogo agrupado por categoría (derivado una vez, evita re-filtrar en cada recomposición). */
+val catalogByCategory: Map<Category, List<PaletteEntry>> = builderCatalog.groupBy { it.category }
+
+/** Índice por `type` para el inspector (descriptor del nodo seleccionado). */
+val catalogByType: Map<String, PaletteEntry> = builderCatalog.associateBy { it.type }

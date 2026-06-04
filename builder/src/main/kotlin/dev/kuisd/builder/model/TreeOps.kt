@@ -37,6 +37,13 @@ internal object TreeOps {
         return node.copy(id = "${node.type}-$n")
     }
 
+    /** Asigna ids únicos a [node] y a TODO su subárbol contra [existing] (acumulando). Determinista. */
+    fun ensureUniqueTree(node: SduiNode, existing: MutableSet<String>): SduiNode {
+        val withId = ensureId(node, existing)
+        withId.id?.let { existing += it }
+        return withId.copy(children = withId.children.map { ensureUniqueTree(it, existing) })
+    }
+
     /**
      * Inserta [template] (con id único) como hijo de [parentId] si ese nodo existe y su `type` está
      * en [containerTypes]; en otro caso lo añade a los hijos de la raíz. Devuelve el nuevo árbol.
@@ -47,7 +54,7 @@ internal object TreeOps {
         template: SduiNode,
         containerTypes: Set<String>,
     ): SduiNode {
-        val node = ensureId(template, collectIds(root))
+        val node = ensureUniqueTree(template, collectIds(root).toMutableSet())
         val parent = parentId?.let { findById(root, it) }
         val targetId = if (parent != null && parent.type in containerTypes) parentId else root.id
         return if (targetId != null && targetId != root.id) {

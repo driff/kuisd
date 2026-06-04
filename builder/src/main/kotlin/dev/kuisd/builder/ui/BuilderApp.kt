@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -30,6 +31,7 @@ import dev.kuisd.sdui.RenderNode
 
 private const val PREVIEW_WEIGHT = 0.55f
 private const val PANEL_WEIGHT = 0.45f
+private val EXPORT_PANEL_MAX_HEIGHT = 220.dp
 
 /** App del builder: preview (izquierda) + paleta/outline/inspector/export (columna derecha). */
 @Composable
@@ -78,7 +80,10 @@ private fun RightColumn(document: BuilderDocument, modifier: Modifier) {
             Text("Exportar JSON")
         }
         exported?.let { json ->
-            Box(Modifier.weight(1f).fillMaxWidth().padding(8.dp).verticalScroll(rememberScrollState())) {
+            Box(
+                Modifier.heightIn(max = EXPORT_PANEL_MAX_HEIGHT).fillMaxWidth()
+                    .padding(8.dp).verticalScroll(rememberScrollState()),
+            ) {
                 Text(json, style = MaterialTheme.typography.bodySmall)
             }
         }

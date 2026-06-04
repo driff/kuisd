@@ -2,6 +2,7 @@ package dev.kuisd.builder.ui
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -28,7 +29,7 @@ internal fun OutlinePane(
     onDelete: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    androidx.compose.foundation.layout.Column(modifier.verticalScroll(rememberScrollState())) {
+    Column(modifier.verticalScroll(rememberScrollState())) {
         OutlineNode(root, depth = 0, selectedId = selectedId, onSelect = onSelect, onDelete = onDelete)
     }
 }
@@ -47,7 +48,8 @@ private fun OutlineNode(
         modifier = Modifier
             .fillMaxWidth()
             .background(rowColor)
-            .clickable { onSelect(node.id) }
+            // Solo selecciona nodos con id (todos lo tienen tras ensureUniqueTree); evita deseleccionar.
+            .clickable(enabled = node.id != null) { node.id?.let(onSelect) }
             .padding(start = (depth * 12).dp, top = 2.dp, bottom = 2.dp),
     ) {
         Text(
