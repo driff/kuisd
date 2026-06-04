@@ -52,6 +52,39 @@ private val contentScaleOptions: List<String> = listOf("crop", "fit", "fillBound
 /** Opciones de `contentDirection` del componente `scaffold`. */
 private val contentDirectionOptions: List<String> = listOf("column", "row")
 
+/** Alineación horizontal para contenedores `column` (refs de `AlignmentToken`). */
+private val alignHorizontalOptions = listOf(
+    Tokens.Alignment.Start.ref,
+    Tokens.Alignment.CenterHorizontally.ref,
+    Tokens.Alignment.End.ref,
+)
+
+/** Alineación vertical para contenedores `row` (refs de `AlignmentToken`). */
+private val alignVerticalOptions = listOf(
+    Tokens.Alignment.Top.ref,
+    Tokens.Alignment.CenterVertically.ref,
+    Tokens.Alignment.Bottom.ref,
+)
+
+/** Tokens de espacio disponibles para `padding` (4 lados, v1). */
+private val spaceOptions = listOf(
+    Tokens.Space.Xs.ref,
+    Tokens.Space.Sm.ref,
+    Tokens.Space.Md.ref,
+    Tokens.Space.Lg.ref,
+    Tokens.Space.Xl.ref,
+)
+
+// Campos de `UiModifier` reutilizados por varias entradas (evita copy-paste de FieldSpec).
+private fun fillMaxWidthField() =
+    FieldSpec("fillMaxWidth", "Ancho máximo", FieldEditor.Bool, target = FieldTarget.Modifier)
+
+private fun paddingField() =
+    FieldSpec("padding", "Padding", FieldEditor.Enum, options = spaceOptions, target = FieldTarget.Modifier)
+
+private fun alignmentField(options: List<String>) =
+    FieldSpec("alignment", "Alineación", FieldEditor.Enum, options = options, target = FieldTarget.Modifier)
+
 /**
  * Catálogo curado: subconjunto de `CorePack` con plantillas válidas (decodificables) y campos
  * editables por el inspector. Hecho a mano para controlar editores, opciones y plantillas.
@@ -72,6 +105,8 @@ val builderCatalog: List<PaletteEntry> = listOf(
                 editor = FieldEditor.Enum,
                 options = typeStyleOptions,
             ),
+            fillMaxWidthField(),
+            paddingField(),
         ),
     ),
     PaletteEntry(
@@ -82,6 +117,8 @@ val builderCatalog: List<PaletteEntry> = listOf(
         template = SduiNode(type = "button", props = props("label" to "Botón")),
         fields = listOf(
             FieldSpec(key = "label", label = "Etiqueta", editor = FieldEditor.Text),
+            fillMaxWidthField(),
+            paddingField(),
         ),
     ),
     // Contenedores
@@ -92,12 +129,9 @@ val builderCatalog: List<PaletteEntry> = listOf(
         acceptsChildren = true,
         template = SduiNode(type = "column"),
         fields = listOf(
-            FieldSpec(
-                key = "fillMaxWidth",
-                label = "Ancho máximo",
-                editor = FieldEditor.Bool,
-                target = FieldTarget.Modifier,
-            ),
+            fillMaxWidthField(),
+            alignmentField(alignHorizontalOptions),
+            paddingField(),
         ),
     ),
     PaletteEntry(
@@ -107,12 +141,9 @@ val builderCatalog: List<PaletteEntry> = listOf(
         acceptsChildren = true,
         template = SduiNode(type = "row"),
         fields = listOf(
-            FieldSpec(
-                key = "fillMaxWidth",
-                label = "Ancho máximo",
-                editor = FieldEditor.Bool,
-                target = FieldTarget.Modifier,
-            ),
+            fillMaxWidthField(),
+            alignmentField(alignVerticalOptions),
+            paddingField(),
         ),
     ),
     PaletteEntry(
@@ -121,7 +152,9 @@ val builderCatalog: List<PaletteEntry> = listOf(
         label = "Tarjeta",
         acceptsChildren = true,
         template = SduiNode(type = "card"),
-        fields = emptyList(),
+        fields = listOf(
+            paddingField(),
+        ),
     ),
     PaletteEntry(
         type = "surface",
@@ -129,7 +162,9 @@ val builderCatalog: List<PaletteEntry> = listOf(
         label = "Superficie",
         acceptsChildren = true,
         template = SduiNode(type = "surface"),
-        fields = emptyList(),
+        fields = listOf(
+            paddingField(),
+        ),
     ),
     PaletteEntry(
         type = "divider",
@@ -161,6 +196,7 @@ val builderCatalog: List<PaletteEntry> = listOf(
                 editor = FieldEditor.Enum,
                 options = contentDirectionOptions,
             ),
+            paddingField(),
         ),
     ),
     PaletteEntry(
@@ -200,6 +236,8 @@ val builderCatalog: List<PaletteEntry> = listOf(
                 options = contentScaleOptions,
             ),
             FieldSpec(key = "contentDescription", label = "Descripción", editor = FieldEditor.Text),
+            fillMaxWidthField(),
+            paddingField(),
         ),
     ),
     PaletteEntry(

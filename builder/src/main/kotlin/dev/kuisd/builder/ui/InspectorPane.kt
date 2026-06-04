@@ -24,6 +24,9 @@ import dev.kuisd.builder.catalog.FieldEditor
 import dev.kuisd.builder.catalog.FieldSpec
 import dev.kuisd.builder.catalog.FieldTarget
 import dev.kuisd.builder.catalog.catalogByType
+import dev.kuisd.builder.catalog.modifierEnumValue
+import dev.kuisd.builder.catalog.optionLabel
+import dev.kuisd.builder.catalog.withModifierEnum
 import dev.kuisd.sdui.core.SduiNode
 import dev.kuisd.sdui.core.UiModifier
 import kotlinx.serialization.json.JsonObject
@@ -62,8 +65,8 @@ private fun FieldRow(
     onModifier: (UiModifier) -> Unit,
 ) {
     when (field.editor) {
-        FieldEditor.Bool -> BoolField(node, field, onModifier, onProps)
-        FieldEditor.Enum -> EnumField(node, field, onProps)
+        FieldEditor.Bool -> BoolField(node, field, onProps, onModifier)
+        FieldEditor.Enum -> EnumField(node, field, onProps, onModifier)
         FieldEditor.Text -> TextFieldEditor(node, field, onProps)
     }
 }
@@ -81,20 +84,48 @@ private fun TextFieldEditor(node: SduiNode, field: FieldSpec, onProps: (JsonObje
 }
 
 @Composable
-private fun EnumField(node: SduiNode, field: FieldSpec, onProps: (JsonObject) -> Unit) {
+private fun EnumField(
+    node: SduiNode,
+    field: FieldSpec,
+    onProps: (JsonObject) -> Unit,
+    onModifier: (UiModifier) -> Unit,
+) {
+    val isModifier = field.target == FieldTarget.Modifier
     var expanded by remember { mutableStateOf(false) }
-    val current = propValue(node, field.key).ifEmpty { "(elegir)" }
+    val rawCurrent = if (isModifier) {
+        modifierEnumValue(node.modifier, field.key)
+    } else {
+        propValue(node, field.key)
+    }
+    val display = when {
+        rawCurrent.isEmpty() -> "(elegir)"
+        isModifier -> optionLabel(rawCurrent)
+        else -> rawCurrent
+    }
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(field.label, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
         Box {
-            TextButton(onClick = { expanded = true }) { Text(current) }
+            TextButton(onClick = { expanded = true }) { Text(display) }
             DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-                field.options.forEach { option ->
+                if (isModifier) {
                     DropdownMenuItem(
-                        text = { Text(option) },
+                        text = { Text("(ninguno)") },
                         onClick = {
                             expanded = false
-                            onProps(withProp(node.props, field.key, option))
+                            onModifier(withModifierEnum(node.modifier, field.key, ""))
+                        },
+                    )
+                }
+                field.options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(if (isModifier) optionLabel(option) else option) },
+                        onClick = {
+                            expanded = false
+                            if (isModifier) {
+                                onModifier(withModifierEnum(node.modifier, field.key, option))
+                            } else {
+                                onProps(withProp(node.props, field.key, option))
+                            }
                         },
                     )
                 }
@@ -107,8 +138,8 @@ private fun EnumField(node: SduiNode, field: FieldSpec, onProps: (JsonObject) ->
 private fun BoolField(
     node: SduiNode,
     field: FieldSpec,
-    onModifier: (UiModifier) -> Unit,
     onProps: (JsonObject) -> Unit,
+    onModifier: (UiModifier) -> Unit,
 ) {
     val checked = if (field.target == FieldTarget.Modifier) {
         modifierBool(node.modifier, field.key)

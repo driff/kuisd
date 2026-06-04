@@ -3,6 +3,7 @@ package dev.kuisd.builder.catalog
 import dev.kuisd.sdui.CorePack
 import dev.kuisd.sdui.core.DefaultSduiJson
 import dev.kuisd.sdui.core.SduiNode
+import dev.kuisd.sdui.core.Tokens
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -54,6 +55,55 @@ class BuilderCatalogTest {
         assertTrue(
             scaffold.fields.any { it.key == "contentDirection" },
             "scaffold no tiene un campo con key 'contentDirection'",
+        )
+    }
+
+    @Test
+    fun `hojas tienen fillMaxWidth y padding`() {
+        for (type in listOf("text", "button", "image")) {
+            val entry = assertNotNull(catalogByType[type], "falta la entrada '$type'")
+            assertTrue(
+                entry.fields.any { it.key == "fillMaxWidth" && it.target == FieldTarget.Modifier },
+                "'$type' no tiene field 'fillMaxWidth' (Modifier)",
+            )
+            assertTrue(
+                entry.fields.any { it.key == "padding" && it.target == FieldTarget.Modifier },
+                "'$type' no tiene field 'padding' (Modifier)",
+            )
+        }
+    }
+
+    @Test
+    fun `column tiene alignment horizontal`() {
+        val column = assertNotNull(catalogByType["column"], "falta la entrada 'column'")
+        val alignment = assertNotNull(
+            column.fields.firstOrNull { it.key == "alignment" },
+            "'column' no tiene field 'alignment'",
+        )
+        assertEquals(
+            listOf(
+                Tokens.Alignment.Start.ref,
+                Tokens.Alignment.CenterHorizontally.ref,
+                Tokens.Alignment.End.ref,
+            ),
+            alignment.options,
+        )
+    }
+
+    @Test
+    fun `row tiene alignment vertical`() {
+        val row = assertNotNull(catalogByType["row"], "falta la entrada 'row'")
+        val alignment = assertNotNull(
+            row.fields.firstOrNull { it.key == "alignment" },
+            "'row' no tiene field 'alignment'",
+        )
+        assertEquals(
+            listOf(
+                Tokens.Alignment.Top.ref,
+                Tokens.Alignment.CenterVertically.ref,
+                Tokens.Alignment.Bottom.ref,
+            ),
+            alignment.options,
         )
     }
 }

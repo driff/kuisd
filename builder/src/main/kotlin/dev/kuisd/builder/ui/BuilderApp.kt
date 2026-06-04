@@ -29,14 +29,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.kuisd.app.SduiPreviewEnvironment
 import dev.kuisd.builder.catalog.isMainContainer
 import dev.kuisd.builder.export.encodeToJson
 import dev.kuisd.builder.io.BuilderFileStore
 import dev.kuisd.builder.model.BuilderDocument
 import dev.kuisd.builder.model.SlotOps
 import dev.kuisd.builder.model.TreeOps
-import dev.kuisd.sdui.RenderNode
 import dev.kuisd.sdui.core.SduiEnvelope
 import java.io.File
 
@@ -95,9 +93,11 @@ internal fun BuilderApp() {
                 )
                 HorizontalDivider()
                 Row(Modifier.fillMaxSize()) {
-                    Box(Modifier.weight(PREVIEW_WEIGHT).fillMaxHeight().padding(12.dp)) {
-                        SduiPreviewEnvironment(handler) { RenderNode(document.root) }
-                    }
+                    PreviewPane(
+                        document = document,
+                        handler = handler,
+                        modifier = Modifier.weight(PREVIEW_WEIGHT).fillMaxHeight(),
+                    )
                     VerticalDivider()
                     RightColumn(
                         document = document,
