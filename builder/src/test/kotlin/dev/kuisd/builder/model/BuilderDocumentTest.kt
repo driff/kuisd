@@ -1,5 +1,6 @@
 package dev.kuisd.builder.model
 
+import dev.kuisd.builder.catalog.mainContainers
 import dev.kuisd.sdui.core.SduiEnvelope
 import dev.kuisd.sdui.core.SduiNode
 import kotlinx.serialization.json.JsonObject
@@ -8,6 +9,7 @@ import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -60,6 +62,7 @@ class BuilderDocumentTest {
         assertEquals(1, envelope.schemaVersion)
         assertEquals("builder", envelope.screenId)
         assertEquals("root", envelope.root.id)
+        assertEquals("scaffold", envelope.root.type) // raíz por defecto ahora es scaffold (HU-2.2)
         assertTrue(envelope.variables.isEmpty())
         assertTrue(envelope.meta.isEmpty())
     }
@@ -156,5 +159,117 @@ class BuilderDocumentTest {
         doc.delete("t")
 
         assertEquals("screen", doc.selectedId)
+    }
+
+    // ── T4: contenedores principales y ruteo de inserción ──────────────────────────────────────
+
+    @Test
+    fun new_document_root_is_an_empty_scaffold() {
+        val doc = BuilderDocument()
+
+        assertEquals("scaffold", doc.root.type)
+        assertEquals("root", doc.root.id)
+    }
+
+    private val scaffoldSpec get() = mainContainers.getValue("scaffold")
+
+    @Test
+    fun inserting_a_topAppBar_routes_to_the_topBar_slot_and_replaces_on_repeat() {
+        val doc = BuilderDocument()
+
+        doc.insert(SduiNode(type = "topAppBar"))
+        var topBar = SlotOps.project(doc.root, scaffoldSpec).getValue("topBar")
+        assertEquals(1, topBar.size)
+        assertEquals("topAppBar", topBar.single().type)
+
+        // Un segundo topAppBar REEMPLAZA al anterior (slot único): sigue habiendo 1.
+        doc.insert(SduiNode(type = "topAppBar"))
+        topBar = SlotOps.project(doc.root, scaffoldSpec).getValue("topBar")
+        assertEquals(1, topBar.size)
+        assertEquals("topAppBar", topBar.single().type)
+    }
+
+    @Test
+    fun inserting_a_bottomBar_routes_to_the_bottomBar_slot() {
+        val doc = BuilderDocument()
+
+        doc.insert(SduiNode(type = "bottomBar"))
+
+        val bottomBar = SlotOps.project(doc.root, scaffoldSpec).getValue("bottomBar")
+        assertEquals(1, bottomBar.size)
+        assertEquals("bottomBar", bottomBar.single().type)
+    }
+
+    @Test
+    fun inserting_a_text_routes_to_content() {
+        val doc = BuilderDocument()
+
+        doc.insert(SduiNode(type = "text"))
+
+        val content = SlotOps.project(doc.root, scaffoldSpec).getValue("content")
+        assertEquals(1, content.size)
+        assertEquals("text", content.single().type)
+    }
+
+    @Test
+    fun inserting_a_main_container_is_rejected_and_sets_lastError() {
+        val doc = BuilderDocument()
+        doc.insert(SduiNode(type = "topAppBar")) // estado previo: 1 nodo en topBar
+        val before = doc.root
+
+        doc.insert(SduiNode(type = "scaffold")) // contenedor principal: solo va en la raíz
+
+        assertEquals(before, doc.root) // árbol intacto
+        assertNotNull(doc.lastError)
+    }
+
+    @Test
+    fun inserting_a_wrong_type_into_a_selected_single_slot_is_rejected() {
+        val doc = BuilderDocument()
+        doc.selectSlot("topBar")
+        val before = doc.root
+
+        doc.insert(SduiNode(type = "text")) // text no está en childTypes de topBar
+
+        assertEquals(before, doc.root) // no muta
+        assertNotNull(doc.lastError)
+    }
+
+    @Test
+    fun loadWrapped_wraps_the_loaded_tree_as_scaffold_content() {
+        val doc = BuilderDocument()
+        val loaded = SduiNode(type = "column", id = "c", children = listOf(SduiNode(type = "text", id = "t")))
+
+        doc.loadWrapped(SduiEnvelope(schemaVersion = 1, screenId = "builder", root = loaded), file = null)
+
+        assertEquals("scaffold", doc.root.type)
+        val content = SlotOps.project(doc.root, scaffoldSpec).getValue("content")
+        assertEquals(listOf("column"), content.map { it.type })
+        assertTrue(doc.isModified)
+    }
+
+    @Test
+    fun loading_a_scaffold_envelope_round_trips_slots_and_clears_modified() {
+        val doc = BuilderDocument()
+        val envelope = SduiEnvelope(
+            schemaVersion = 1,
+            screenId = "builder",
+            root = SduiNode(
+                type = "scaffold",
+                id = "root",
+                children = listOf(
+                    SduiNode(type = "topAppBar", id = "bar"),
+                    SduiNode(type = "text", id = "t"),
+                ),
+            ),
+        )
+
+        doc.load(envelope, file = null)
+
+        val slots = SlotOps.project(doc.root, scaffoldSpec)
+        assertEquals(listOf("topAppBar"), slots.getValue("topBar").map { it.type })
+        assertEquals(listOf("text"), slots.getValue("content").map { it.type })
+        assertTrue(slots.getValue("bottomBar").isEmpty())
+        assertFalse(doc.isModified)
     }
 }

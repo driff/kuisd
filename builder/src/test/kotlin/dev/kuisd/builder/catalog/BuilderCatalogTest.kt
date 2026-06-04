@@ -42,4 +42,18 @@ class BuilderCatalogTest {
             }
         }
     }
+
+    @Test
+    fun `bottomBar esta en el catalogo`() {
+        assertNotNull(catalogByType["bottomBar"], "falta la entrada 'bottomBar'")
+    }
+
+    @Test
+    fun `scaffold tiene campo contentDirection`() {
+        val scaffold = assertNotNull(catalogByType["scaffold"], "falta la entrada 'scaffold'")
+        assertTrue(
+            scaffold.fields.any { it.key == "contentDirection" },
+            "scaffold no tiene un campo con key 'contentDirection'",
+        )
+    }
 }
