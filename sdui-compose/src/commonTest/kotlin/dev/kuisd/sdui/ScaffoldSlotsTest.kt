@@ -49,6 +49,18 @@ class ScaffoldSlotsTest {
 
         assertNull(slots.topBar)
         assertNull(slots.bottomBar)
+        assertNull(slots.fab)
         assertEquals(emptyList(), slots.content)
+    }
+
+    @Test
+    fun fab_child_goes_to_fab_slot_first_wins_and_not_to_content() {
+        val first = SduiNode(type = "fab", id = "first")
+        val second = SduiNode(type = "fab", id = "second")
+        val content = SduiNode(type = "text", id = "c")
+        val slots = partitionScaffoldSlots(listOf(content, first, second))
+
+        assertEquals(first, slots.fab)
+        assertEquals(listOf(content), slots.content) // el 2.º fab se descarta, no cae a content
     }
 }

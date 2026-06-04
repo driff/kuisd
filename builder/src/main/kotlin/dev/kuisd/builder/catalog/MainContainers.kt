@@ -34,6 +34,7 @@ val mainContainers: Map<String, MainContainerSpec> = mapOf(
             SlotSpec("topBar", "Top bar", multiple = false, childTypes = setOf("topAppBar")),
             SlotSpec("content", "Content", multiple = true, childTypes = emptySet()),
             SlotSpec("bottomBar", "Bottom bar", multiple = false, childTypes = setOf("bottomBar")),
+            SlotSpec("fab", "FAB", multiple = false, childTypes = setOf("fab")),
         ),
     ),
 )

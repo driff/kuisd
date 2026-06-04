@@ -1,6 +1,8 @@
 package dev.kuisd.builder.model
 
+import dev.kuisd.builder.catalog.builderCatalog
 import dev.kuisd.builder.catalog.mainContainers
+import dev.kuisd.sdui.core.NavigateBack
 import dev.kuisd.sdui.core.SduiEnvelope
 import dev.kuisd.sdui.core.SduiNode
 import kotlinx.serialization.json.JsonObject
@@ -259,6 +261,34 @@ class BuilderDocumentTest {
         val content = SlotOps.project(doc.root, scaffoldSpec).getValue("content")
         assertEquals(listOf("column"), content.map { it.type })
         assertTrue(doc.isModified)
+    }
+
+    @Test
+    fun inserting_a_fab_routes_to_the_fab_slot() {
+        val doc = BuilderDocument()
+
+        doc.insert(SduiNode(type = "fab"))
+
+        val fab = SlotOps.project(doc.root, scaffoldSpec).getValue("fab")
+        assertEquals(1, fab.size)
+        assertEquals("fab", fab.single().type)
+    }
+
+    @Test
+    fun inserting_the_topbar_nav_preset_fills_the_topBar_slot_with_its_actions_and_unique_ids() {
+        val doc = BuilderDocument()
+        val preset = builderCatalog.first { it.key == "preset-topbar-nav" }.template
+
+        doc.insert(preset)
+
+        val topBar = SlotOps.project(doc.root, scaffoldSpec).getValue("topBar")
+        assertEquals(1, topBar.size)
+        val bar = topBar.single()
+        assertEquals("topAppBar", bar.type)
+        assertEquals(mapOf("onNavigationClick" to listOf(NavigateBack)), bar.actions)
+        // ids únicos en todo el árbol tras insertar.
+        val ids = TreeOps.collectIds(doc.root)
+        assertEquals(ids.size, ids.toSet().size)
     }
 
     @Test

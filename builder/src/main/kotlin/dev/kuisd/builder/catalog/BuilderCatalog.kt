@@ -1,12 +1,13 @@
 package dev.kuisd.builder.catalog
 
+import dev.kuisd.sdui.core.NavigateBack
 import dev.kuisd.sdui.core.SduiNode
 import dev.kuisd.sdui.core.Tokens
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
 /** Categorías de la paleta del builder. */
-enum class Category { Texto, Contenedores, Estructura, Media }
+enum class Category { Texto, Contenedores, Estructura, Media, Presets }
 
 /** Tipo de editor del inspector para un campo. */
 enum class FieldEditor { Text, Bool, Enum }
@@ -31,11 +32,17 @@ data class PaletteEntry(
     val acceptsChildren: Boolean,
     val template: SduiNode,
     val fields: List<FieldSpec>,
+    val key: String = type, // identidad de paleta (única); base ⇒ == type
+    val isPreset: Boolean = false, // true = preset; no aporta descriptor de inspector
 )
 
 /** Construye un [JsonObject] de props desde pares clave→valor string. */
 private fun props(vararg pairs: Pair<String, String>): JsonObject =
     JsonObject(pairs.associate { (k, v) -> k to JsonPrimitive(v) })
+
+/** Construye un nodo `bottomBarItem` (icono + etiqueta + valor) para los presets de barra inferior. */
+private fun bottomItem(icon: String, label: String, value: String): SduiNode =
+    SduiNode(type = "bottomBarItem", props = props("icon" to icon, "label" to label, "value" to value))
 
 /** Refs de estilo de texto disponibles (tokens de tipografía). */
 private val typeStyleOptions: List<String> = listOf(
@@ -182,6 +189,13 @@ val builderCatalog: List<PaletteEntry> = listOf(
                 editor = FieldEditor.Enum,
                 options = contentDirectionOptions,
             ),
+            FieldSpec(
+                key = "fabPosition",
+                label = "Posición FAB",
+                editor = FieldEditor.Enum,
+                options = listOf("end", "center"),
+                target = FieldTarget.Prop,
+            ),
             paddingField(),
         ),
     ),
@@ -193,6 +207,12 @@ val builderCatalog: List<PaletteEntry> = listOf(
         template = SduiNode(type = "topAppBar", props = props("title" to "Título")),
         fields = listOf(
             FieldSpec(key = "title", label = "Título", editor = FieldEditor.Text),
+            FieldSpec(
+                key = "centered",
+                label = "Título centrado",
+                editor = FieldEditor.Bool,
+                target = FieldTarget.Prop,
+            ),
         ),
     ),
     PaletteEntry(
@@ -236,10 +256,105 @@ val builderCatalog: List<PaletteEntry> = listOf(
             FieldSpec(key = "name", label = "Nombre", editor = FieldEditor.Text),
         ),
     ),
+    // Estructura · FAB base
+    PaletteEntry(
+        type = "fab",
+        category = Category.Estructura,
+        label = "FAB",
+        acceptsChildren = false,
+        template = SduiNode(type = "fab", props = props("icon" to "add")),
+        fields = listOf(
+            FieldSpec(key = "icon", label = "Icono", editor = FieldEditor.Text),
+        ),
+    ),
+    // Presets (no aportan descriptor de inspector; key única; sin campos)
+    PaletteEntry(
+        type = "topAppBar",
+        category = Category.Presets,
+        label = "Top Bar · Navegación",
+        acceptsChildren = false,
+        template = SduiNode(
+            type = "topAppBar",
+            props = props("title" to "Título", "navigationIcon" to "arrowBack"),
+            actions = mapOf("onNavigationClick" to listOf(NavigateBack)),
+        ),
+        fields = emptyList(),
+        key = "preset-topbar-nav",
+        isPreset = true,
+    ),
+    PaletteEntry(
+        type = "topAppBar",
+        category = Category.Presets,
+        label = "Top Bar · Acciones",
+        acceptsChildren = false,
+        template = SduiNode(
+            type = "topAppBar",
+            props = props("title" to "Título"),
+            children = listOf(
+                SduiNode(type = "iconButton", props = props("name" to "search")),
+                SduiNode(type = "iconButton", props = props("name" to "moreVert")),
+            ),
+        ),
+        fields = emptyList(),
+        key = "preset-topbar-actions",
+        isPreset = true,
+    ),
+    PaletteEntry(
+        type = "topAppBar",
+        category = Category.Presets,
+        label = "Top Bar · Centrado",
+        acceptsChildren = false,
+        template = SduiNode(
+            type = "topAppBar",
+            props = JsonObject(
+                mapOf("title" to JsonPrimitive("Título"), "centered" to JsonPrimitive(true)),
+            ),
+        ),
+        fields = emptyList(),
+        key = "preset-topbar-centered",
+        isPreset = true,
+    ),
+    PaletteEntry(
+        type = "bottomBar",
+        category = Category.Presets,
+        label = "Bottom · Menú (3)",
+        acceptsChildren = true,
+        template = SduiNode(
+            type = "bottomBar",
+            children = listOf(
+                bottomItem("home", "Inicio", "home"),
+                bottomItem("search", "Buscar", "search"),
+                bottomItem("settings", "Ajustes", "settings"),
+            ),
+        ),
+        fields = emptyList(),
+        key = "preset-bottom-3",
+        isPreset = true,
+    ),
+    PaletteEntry(
+        type = "bottomBar",
+        category = Category.Presets,
+        label = "Bottom · Menú (5)",
+        acceptsChildren = true,
+        template = SduiNode(
+            type = "bottomBar",
+            children = listOf(
+                bottomItem("home", "Inicio", "home"),
+                bottomItem("search", "Buscar", "search"),
+                bottomItem("settings", "Ajustes", "settings"),
+                bottomItem("favorite", "Favoritos", "favorite"),
+                bottomItem("edit", "Editar", "edit"),
+            ),
+        ),
+        fields = emptyList(),
+        key = "preset-bottom-5",
+        isPreset = true,
+    ),
+    // El FAB se inserta desde la entrada base `fab` (categoría Estructura); no se duplica como preset.
 )
 
 /** Catálogo agrupado por categoría (derivado una vez, evita re-filtrar en cada recomposición). */
 val catalogByCategory: Map<Category, List<PaletteEntry>> = builderCatalog.groupBy { it.category }
 
 /** Índice por `type` para el inspector (descriptor del nodo seleccionado). */
-val catalogByType: Map<String, PaletteEntry> = builderCatalog.associateBy { it.type }
+val catalogByType: Map<String, PaletteEntry> = builderCatalog.filterNot { it.isPreset }.associateBy { it.type }

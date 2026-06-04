@@ -208,7 +208,7 @@ private fun BoolField(
                 if (field.target == FieldTarget.Modifier) {
                     onModifier(withModifierBool(node.modifier, field.key, value))
                 } else {
-                    onProps(withProp(node.props, field.key, value.toString()))
+                    onProps(JsonObject(node.props + (field.key to JsonPrimitive(value))))
                 }
             },
         )
