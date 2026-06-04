@@ -1,5 +1,7 @@
 package dev.kuisd.sdui
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -30,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -131,12 +134,14 @@ data class IconButtonProps(
 )
 
 /**
- * Imagen remota por URL (spec 012). `url`/`contentDescription` bindables (005); carga vía seam
- * `LocalAsyncImageLoader`. Solo URL remota en v1 (imágenes locales/empaquetadas fuera de alcance).
+ * Imagen (spec 012 + 013). `url`/`name`/`contentDescription` bindables (005). Si `name` está presente,
+ * la imagen es **local** (resuelta por `LocalImageRegistry`) y tiene prioridad; si no, es **remota** por
+ * `url` (seam `LocalAsyncImageLoader`).
  */
 @Serializable
 data class ImageProps(
     val url: String = "",
+    val name: String = "", // imagen local en el ImageRegistry (013); prioritaria sobre url
     val contentScale: String = "fit", // crop|fit|fillBounds|inside|none
     val contentDescription: String? = null,
 )
@@ -370,18 +375,44 @@ private fun RenderScope.IconButtonRenderer(
 }
 
 /**
- * Renderer del `image` (spec 012): delega la carga al seam `LocalAsyncImage` (la app lo provee con
- * Coil). `url`/`contentDescription` bindables (005); el `UiModifier` (tamaño/forma, 008) va al loader.
+ * Renderer del `image` (spec 012 + 013). Si `name` resuelve, pinta la imagen **local** del
+ * `LocalImageRegistry` con `foundation.Image`; si no, delega en el seam **remoto**
+ * `LocalAsyncImageLoader` (012). `url`/`name`/`contentDescription` bindables (005); el `UiModifier`
+ * (tamaño/forma, 008) se aplica en ambos caminos.
  */
 @Composable
 private fun RenderScope.ImageRenderer(p: ImageProps, baseModifier: Modifier) {
-    LocalAsyncImageLoader.current.Image(
-        url = bind(p.url),
-        // Un binding ausente resuelve a "" (resolveBinding); para a11y se trata como decorativa (null).
-        contentDescription = p.contentDescription?.let { bind(it) }?.ifEmpty { null },
-        contentScale = p.contentScale.toContentScale(),
-        modifier = baseModifier,
-    )
+    // Aviso (una vez por par name/url): declarar ambos es ambiguo; `name` gana (convención `sduiLog`).
+    remember(p.name, p.url) {
+        if (p.name.isNotEmpty() && p.url.isNotEmpty()) {
+            sduiLog("image con 'name' y 'url' declarados; se usa 'name' (local)")
+        }
+    }
+    // Un binding ausente resuelve a "" (resolveBinding); para a11y se trata como decorativa (null).
+    val description = p.contentDescription?.let { bind(it) }?.ifEmpty { null }
+    val scale = p.contentScale.toContentScale()
+    val name = bind(p.name)
+    val url = bind(p.url)
+    when {
+        name.isNotEmpty() ->
+            // `key(name)`: al cambiar de imagen local reactiva, no reusa el slot del painter anterior.
+            key(name) {
+                val painter = LocalImageRegistry.current.get(name)
+                if (painter != null) {
+                    Image(
+                        painter = painter(),
+                        contentDescription = description,
+                        contentScale = scale,
+                        modifier = baseModifier,
+                    )
+                } else {
+                    Box(baseModifier) // nombre local desconocido → hueco neutro (HU-1.5)
+                }
+            }
+
+        url.isNotEmpty() -> LocalAsyncImageLoader.current.Image(url, description, scale, baseModifier)
+        else -> Box(baseModifier) // ni name ni url → hueco neutro (HU-1.5)
+    }
 }
 
 /**

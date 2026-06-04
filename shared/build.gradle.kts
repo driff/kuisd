@@ -42,6 +42,8 @@ kotlin {
             // Coil 3 (spec 012): impl del seam LocalAsyncImage; usa Ktor 3 para la red.
             implementation(libs.coil.compose)
             implementation(libs.coil.network.ktor3)
+            // Compose Multiplatform Resources (spec 013): painterResource + Res para assets locales.
+            implementation(compose.components.resources)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
@@ -59,4 +61,10 @@ kotlin {
             }
         }
     }
+}
+
+// Compose Resources (spec 013): paquete fijo del `Res` generado para imports estables.
+compose.resources {
+    publicResClass = true
+    packageOfResClass = "dev.kuisd.shared.resources"
 }

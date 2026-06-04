@@ -26,6 +26,15 @@ allprojects {
         buildUponDefaultConfig = true
         autoCorrect = false
     }
+
+    // ktlint no debe lintar código generado (p.ej. el `Res`/ResourceCollectors de Compose Resources de
+    // `:shared`, spec 013), que vive bajo `build/generated/` con su propio formato. Se aplica en
+    // `allprojects` por simplicidad: excluir código generado del lint es deseable en cualquier módulo.
+    configure<org.jlleitschuh.gradle.ktlint.KtlintExtension> {
+        filter {
+            exclude { entry -> entry.file.path.replace('\\', '/').contains("/build/generated/") }
+        }
+    }
     // NOTE: detekt-formatting ruleset is deferred — not yet published at 2.0.0-alpha.3.
     // The base ruleset (which includes ForbiddenImport, our Clean Architecture rule) is enough.
     // ktlint covers the formatting concerns formatting-ruleset would have caught.

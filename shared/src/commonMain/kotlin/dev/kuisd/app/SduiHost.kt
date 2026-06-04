@@ -21,6 +21,7 @@ import dev.kuisd.app.data.KtorActionEndpoint
 import dev.kuisd.app.data.KtorScreenSource
 import dev.kuisd.app.data.SduiClient
 import dev.kuisd.app.icons.appIconsOverride
+import dev.kuisd.app.image.appImageRegistry
 import dev.kuisd.app.nav.NavActionHandler
 import dev.kuisd.app.nav.NavBackStack
 import dev.kuisd.app.theme.rememberAppTheme
@@ -28,6 +29,7 @@ import dev.kuisd.app.variables.VariableActionHandler
 import dev.kuisd.app.variables.VariableStore
 import dev.kuisd.sdui.LocalAsyncImageLoader
 import dev.kuisd.sdui.LocalComponentRegistry
+import dev.kuisd.sdui.LocalImageRegistry
 import dev.kuisd.sdui.LocalSduiActionHandler
 import dev.kuisd.sdui.LocalVariables
 import dev.kuisd.sdui.icons.DefaultIconRegistry
@@ -56,6 +58,7 @@ fun SduiHost(
 
     val theme = rememberAppTheme()
     val icons = remember { DefaultIconRegistry + appIconsOverride() }
+    val images = remember { appImageRegistry() }
     val asyncImage = rememberCoilImageLoader()
 
     val current = backStack.current
@@ -102,6 +105,7 @@ fun SduiHost(
                 LocalVariables provides store.scope,
                 LocalKuisdTheme provides theme,
                 LocalIconRegistry provides icons,
+                LocalImageRegistry provides images,
                 LocalAsyncImageLoader provides asyncImage,
             ) {
                 Box(Modifier.fillMaxSize()) {
