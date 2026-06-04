@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ProvidableCompositionLocal
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
 import dev.kuisd.sdui.core.DefaultSduiJson
 import dev.kuisd.sdui.core.SduiComponent
 import dev.kuisd.sdui.core.SduiNode
@@ -18,7 +19,7 @@ class RegisteredComponent<P : Any>(
     val renderer: @Composable RenderScope.(P) -> Unit,
 ) {
     @Composable
-    fun Render(node: SduiNode) {
+    fun Render(node: SduiNode, layoutModifier: Modifier = Modifier) {
         val props = remember(node) {
             runCatching { DefaultSduiJson.decodeFromJsonElement(component.serializer, node.props) }
                 .onFailure { sduiLog("props inválidas para type='${node.type}', se degrada a UnknownNode: ${it.message}") }
@@ -28,7 +29,7 @@ class RegisteredComponent<P : Any>(
             UnknownNode(node.type)
             return
         }
-        with(RenderScope(node)) { renderer(props) }
+        with(RenderScope(node, layoutModifier)) { renderer(props) }
     }
 }
 

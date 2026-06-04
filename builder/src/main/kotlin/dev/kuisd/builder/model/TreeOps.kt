@@ -13,6 +13,10 @@ internal object TreeOps {
     fun findById(root: SduiNode, id: String): SduiNode? =
         if (root.id == id) root else root.children.firstNotNullOfOrNull { findById(it, id) }
 
+    /** Nodo cuyo hijo directo tiene [id]; `null` si [id] es la raíz o no existe (spec 019). */
+    fun findParent(root: SduiNode, id: String): SduiNode? =
+        if (root.children.any { it.id == id }) root else root.children.firstNotNullOfOrNull { findParent(it, id) }
+
     /** Recolecta todos los ids no nulos del árbol. */
     fun collectIds(root: SduiNode): Set<String> {
         val acc = mutableSetOf<String>()

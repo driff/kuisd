@@ -132,6 +132,21 @@ class TreeOpsTest {
         assertEquals("keep", kept.id)
     }
 
+    @Test
+    fun `findParent devuelve el contenedor del hijo y null para la raiz`() {
+        val tree = SduiNode(
+            type = "column",
+            id = "root",
+            children = listOf(
+                SduiNode(type = "row", id = "row-1", children = listOf(SduiNode(type = "text", id = "t"))),
+            ),
+        )
+        assertEquals("root", TreeOps.findParent(tree, "row-1")?.id)
+        assertEquals("row-1", TreeOps.findParent(tree, "t")?.id)
+        assertNull(TreeOps.findParent(tree, "root")) // la raíz no tiene padre
+        assertNull(TreeOps.findParent(tree, "missing"))
+    }
+
     private fun props(vararg pairs: Pair<String, String>): JsonObject =
         JsonObject(pairs.associate { (k, v) -> k to JsonPrimitive(v) })
 }

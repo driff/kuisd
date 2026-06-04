@@ -143,6 +143,19 @@ class BuilderDocumentTest {
     }
 
     @Test
+    fun parentType_returns_container_type_of_a_child_and_null_for_root() {
+        val doc = BuilderDocument()
+        doc.insert(SduiNode(type = "column")) // → column-1 en el content del scaffold raíz
+        doc.select("column-1")
+        doc.insert(SduiNode(type = "text")) // → text-1 dentro de column-1
+
+        assertEquals("scaffold", doc.parentType("column-1")) // raíz scaffold
+        assertEquals("column", doc.parentType("text-1"))
+        assertNull(doc.parentType("root")) // la raíz no tiene padre
+        assertNull(doc.parentType(null))
+    }
+
+    @Test
     fun delete_resets_selection_to_loaded_root_id_not_literal_root() {
         val doc = BuilderDocument()
         // Raíz cargada con id ≠ "root": el fallback de delete debe usar root.id.

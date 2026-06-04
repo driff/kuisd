@@ -44,4 +44,20 @@ class ModifierFieldsTest {
     fun `optionLabel toma el ultimo segmento`() {
         assertEquals("centerH", optionLabel("alignment.centerH"))
     }
+
+    @Test
+    fun `withModifierWeight fija un Float positivo y lo lee`() {
+        val set = withModifierWeight(UiModifier(), "2")
+        assertEquals(2f, set.weight)
+        assertEquals("2", modifierWeight(set))
+    }
+
+    @Test
+    fun `withModifierWeight limpia con vacio, no numerico o no positivo`() {
+        val base = withModifierWeight(UiModifier(), "3")
+        assertNull(withModifierWeight(base, "").weight)
+        assertNull(withModifierWeight(base, "abc").weight)
+        assertNull(withModifierWeight(base, "0").weight)
+        assertNull(withModifierWeight(base, "-1").weight)
+    }
 }

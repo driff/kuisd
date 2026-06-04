@@ -12,20 +12,28 @@ import dev.kuisd.sdui.theme.LocalKuisdTheme
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
 
-/** Receiver de un renderer: expone el [node] y el render recursivo de sus children (HU-2.2). */
+/**
+ * Receiver de un renderer: expone el [node] y el render recursivo de sus children (HU-2.2).
+ *
+ * [layoutModifier] son modificadores de SCOPE que el contenedor padre (Row/Column) impone a este hijo
+ * (`weight`/`align`); van ANTES del modifier propio del nodo. Default `Modifier` (no-op) ⇒ retrocompatible
+ * para todo nodo que no sea hijo directo de un Row/Column con esos campos (spec 019).
+ */
 class RenderScope internal constructor(
     val node: SduiNode,
+    private val layoutModifier: Modifier = Modifier,
 ) {
     /**
-     * Modifier resuelto del `UiModifier` del nodo contra el `KuisdTheme` actual (spec 008).
-     * Memoizado por `(node.modifier, theme)` para evitar recalcular en recomposiciones que no
-     * tocan ni el nodo ni el theme.
+     * Modifier del nodo: [layoutModifier] de scope (parent-data) seguido del `UiModifier` propio resuelto
+     * contra el `KuisdTheme` (spec 008). El propio se memoiza por `(node.modifier, theme)`; anteponer el de
+     * scope no rompe `fillMaxWidth`/`padding`/`background` del nodo.
      */
     val modifier: Modifier
         @Composable get() {
             val theme = LocalKuisdTheme.current
             val um = node.modifier
-            return remember(um, theme) { um.toModifier(theme) }
+            val own = remember(um, theme) { um.toModifier(theme) }
+            return layoutModifier.then(own)
         }
 
     /** Alineación horizontal de los hijos para un `Column`; `null` si el token no aplica al eje. */
