@@ -17,8 +17,11 @@ import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DividerDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -154,6 +157,7 @@ data class ImageProps(
 @Serializable
 data class ScaffoldProps(
     val contentDirection: String = "column",
+    val fabPosition: String = "end", // "end" | "center" (spec 020)
 )
 
 /** Barra superior: título bindable e icono de navegación opcional (HU-2). */
@@ -161,6 +165,13 @@ data class ScaffoldProps(
 data class TopAppBarProps(
     val title: String = "",
     val navigationIcon: String? = null,
+    val centered: Boolean = false, // true ⇒ CenterAlignedTopAppBar (spec 020)
+)
+
+/** FAB del `scaffold` (spec 020): un icono + acción `onClick`. */
+@Serializable
+data class FabProps(
+    val icon: String = "",
 )
 
 /** Barra inferior: `selectedBind` = nombre DIRECTO de la variable de selección (HU-3). */
@@ -233,6 +244,15 @@ val CorePack: ComponentRegistry = componentRegistry {
     }
     register(sduiComponent<ScaffoldProps>("scaffold")) { p -> ScaffoldRenderer(p, modifier) }
     register(sduiComponent<TopAppBarProps>("topAppBar")) { p -> TopAppBarRenderer(p, modifier) }
+    register(sduiComponent<FabProps>("fab")) { p ->
+        val handler = LocalSduiActionHandler.current
+        FloatingActionButton(
+            onClick = { handler.handle(node.actions["onClick"].orEmpty()) },
+            modifier = modifier,
+        ) {
+            Icon(resolveIcon(p.icon), contentDescription = null)
+        }
+    }
     register(sduiComponent<BottomBarProps>("bottomBar")) { p -> BottomBarRenderer(p, modifier) }
     register(sduiComponent<ImageProps>("image")) { p -> ImageRenderer(p, modifier) }
 }
@@ -443,6 +463,8 @@ private fun RenderScope.ScaffoldRenderer(p: ScaffoldProps, baseModifier: Modifie
         contentWindowInsets = EngineBarInsets,
         topBar = { slots.topBar?.let { RenderNode(it) } },
         bottomBar = { slots.bottomBar?.let { RenderNode(it) } },
+        floatingActionButton = { slots.fab?.let { RenderNode(it) } },
+        floatingActionButtonPosition = if (p.fabPosition == "center") FabPosition.Center else FabPosition.End,
     ) { innerPadding ->
         // Apila el content (no `Box`, que solaparía 2+ nodos). `row` → horizontal; resto → vertical.
         // El content es un Row/Column eager ⇒ aplica weight/align por-hijo igual que los standalone (spec 019).
@@ -464,19 +486,32 @@ private fun RenderScope.ScaffoldRenderer(p: ScaffoldProps, baseModifier: Modifie
 private fun RenderScope.TopAppBarRenderer(p: TopAppBarProps, baseModifier: Modifier) {
     val handler = LocalSduiActionHandler.current
     val navActions = node.actions["onNavigationClick"].orEmpty()
-    TopAppBar(
-        modifier = baseModifier,
-        windowInsets = EngineBarInsets,
-        title = { Text(bind(p.title)) },
-        navigationIcon = {
-            if (navActions.isNotEmpty()) {
-                IconButton(onClick = { handler.handle(navActions) }) {
-                    Icon(resolveIcon(p.navigationIcon.orEmpty()), contentDescription = null)
-                }
+    // Slots compartidos entre la variante estándar y la centrada (spec 020).
+    val title = @Composable { Text(bind(p.title)) }
+    val navigationIcon = @Composable {
+        if (navActions.isNotEmpty()) {
+            IconButton(onClick = { handler.handle(navActions) }) {
+                Icon(resolveIcon(p.navigationIcon.orEmpty()), contentDescription = null)
             }
-        },
-        actions = { renderChildren() },
-    )
+        }
+    }
+    if (p.centered) {
+        CenterAlignedTopAppBar(
+            modifier = baseModifier,
+            windowInsets = EngineBarInsets,
+            title = title,
+            navigationIcon = navigationIcon,
+            actions = { renderChildren() },
+        )
+    } else {
+        TopAppBar(
+            modifier = baseModifier,
+            windowInsets = EngineBarInsets,
+            title = title,
+            navigationIcon = navigationIcon,
+            actions = { renderChildren() },
+        )
+    }
 }
 
 /**

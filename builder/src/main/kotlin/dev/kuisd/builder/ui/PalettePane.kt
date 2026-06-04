@@ -31,7 +31,7 @@ internal fun PalettePane(onAdd: (PaletteEntry) -> Unit, modifier: Modifier = Mod
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                 )
             }
-            items(entries, key = { it.type }) { entry ->
+            items(entries, key = { it.key }) { entry ->
                 TextButton(onClick = { onAdd(entry) }, modifier = Modifier.fillMaxWidth()) {
                     Text(entry.label, modifier = Modifier.fillMaxWidth(), textAlign = TextAlign.Start)
                 }

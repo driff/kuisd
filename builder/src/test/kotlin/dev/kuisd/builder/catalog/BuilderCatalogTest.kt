@@ -6,6 +6,7 @@ import dev.kuisd.sdui.core.SduiNode
 import dev.kuisd.sdui.core.Tokens
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -47,6 +48,35 @@ class BuilderCatalogTest {
     @Test
     fun `bottomBar esta en el catalogo`() {
         assertNotNull(catalogByType["bottomBar"], "falta la entrada 'bottomBar'")
+    }
+
+    @Test
+    fun `catalogByType tiene una sola entrada para topAppBar (base, no preset)`() {
+        val entry = assertNotNull(catalogByType["topAppBar"], "falta la entrada base 'topAppBar'")
+        assertFalse(entry.isPreset, "la entrada de catalogByType['topAppBar'] no debe ser un preset")
+        assertEquals("topAppBar", entry.key, "la base de topAppBar debe tener key == type")
+    }
+
+    @Test
+    fun `todas las key de builderCatalog son unicas`() {
+        val keys = builderCatalog.map { it.key }
+        assertEquals(keys.size, keys.toSet().size, "hay keys duplicadas en builderCatalog: $keys")
+    }
+
+    @Test
+    fun `los types base (no preset) son unicos`() {
+        // catalogByType = associateBy { type } sobre las entradas base: un type base duplicado se perdería
+        // en silencio. Este invariante lo evita.
+        val baseTypes = builderCatalog.filterNot { it.isPreset }.map { it.type }
+        assertEquals(baseTypes.size, baseTypes.toSet().size, "hay types base duplicados: $baseTypes")
+    }
+
+    @Test
+    fun `existe la categoria Presets en el catalogo`() {
+        assertTrue(
+            builderCatalog.any { it.category == Category.Presets },
+            "no hay ninguna entrada en Category.Presets",
+        )
     }
 
     @Test
