@@ -11,3 +11,9 @@
 #
 # Tracked as a M1 task. For now detekt runs with default rules, catching basic
 # code-smell issues. ktlint enforces formatting.
+
+naming:
+  # Los `@Composable` siguen la convención PascalCase de Compose (RenderNode, BuilderApp…); no es un
+  # smell de naming. detekt en módulos JVM puros (p.ej. :builder) sí escanea estos composables.
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
