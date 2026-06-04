@@ -243,6 +243,7 @@ private fun RightColumn(document: BuilderDocument, onError: (ErrorMsg) -> Unit, 
         val selected = document.selectedId?.let { TreeOps.findById(document.root, it) }
         InspectorPane(
             node = selected,
+            parentType = document.parentType(document.selectedId),
             onProps = { props -> document.selectedId?.let { document.updateProps(it, props) } },
             onModifier = { mod -> document.selectedId?.let { document.updateModifier(it, mod) } },
             modifier = Modifier.weight(1f).fillMaxWidth(),

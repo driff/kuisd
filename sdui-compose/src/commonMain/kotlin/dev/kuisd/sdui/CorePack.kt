@@ -183,13 +183,18 @@ val CorePack: ComponentRegistry = componentRegistry {
         Column(
             modifier = modifier,
             horizontalAlignment = horizontalAlignmentOrNull() ?: Alignment.Start,
-        ) { renderChildren() }
+        ) {
+            // weight/align por-hijo: el modifier de scope va a CADA hijo (spec 019).
+            node.children.forEach { child -> RenderNode(child, childLayout(child.modifier)) }
+        }
     }
     register(sduiComponent<RowProps>("row")) {
         Row(
             modifier = modifier,
             verticalAlignment = verticalAlignmentOrNull() ?: Alignment.Top,
-        ) { renderChildren() }
+        ) {
+            node.children.forEach { child -> RenderNode(child, childLayout(child.modifier)) }
+        }
     }
     register(sduiComponent<TextProps>("text")) { p ->
         Text(text = bind(p.text), modifier = modifier)
@@ -440,11 +445,12 @@ private fun RenderScope.ScaffoldRenderer(p: ScaffoldProps, baseModifier: Modifie
         bottomBar = { slots.bottomBar?.let { RenderNode(it) } },
     ) { innerPadding ->
         // Apila el content (no `Box`, que solaparía 2+ nodos). `row` → horizontal; resto → vertical.
+        // El content es un Row/Column eager ⇒ aplica weight/align por-hijo igual que los standalone (spec 019).
         val contentModifier = Modifier.padding(innerPadding)
         if (p.contentDirection == "row") {
-            Row(contentModifier) { slots.content.forEach { RenderNode(it) } }
+            Row(contentModifier) { slots.content.forEach { RenderNode(it, childLayout(it.modifier)) } }
         } else {
-            Column(contentModifier) { slots.content.forEach { RenderNode(it) } }
+            Column(contentModifier) { slots.content.forEach { RenderNode(it, childLayout(it.modifier)) } }
         }
     }
 }

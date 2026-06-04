@@ -62,6 +62,9 @@ class BuilderDocument {
     /** Spec del contenedor principal de la raíz actual, o null si la raíz no es contenedor principal. */
     private val rootSpec: MainContainerSpec? get() = mainContainers[root.type]
 
+    /** Tipo del contenedor padre del nodo [id] (null si es la raíz o no existe). Para el inspector (spec 019). */
+    fun parentType(id: String?): String? = id?.let { TreeOps.findParent(root, it)?.type }
+
     /** Reconstruye el [SduiEnvelope] del documento (árbol actual + metadatos preservados). */
     fun toEnvelope(): SduiEnvelope =
         SduiEnvelope(

@@ -52,20 +52,6 @@ private val contentScaleOptions: List<String> = listOf("crop", "fit", "fillBound
 /** Opciones de `contentDirection` del componente `scaffold`. */
 private val contentDirectionOptions: List<String> = listOf("column", "row")
 
-/** Alineación horizontal para contenedores `column` (refs de `AlignmentToken`). */
-private val alignHorizontalOptions = listOf(
-    Tokens.Alignment.Start.ref,
-    Tokens.Alignment.CenterHorizontally.ref,
-    Tokens.Alignment.End.ref,
-)
-
-/** Alineación vertical para contenedores `row` (refs de `AlignmentToken`). */
-private val alignVerticalOptions = listOf(
-    Tokens.Alignment.Top.ref,
-    Tokens.Alignment.CenterVertically.ref,
-    Tokens.Alignment.Bottom.ref,
-)
-
 /** Tokens de espacio disponibles para `padding` (4 lados, v1). */
 private val spaceOptions = listOf(
     Tokens.Space.Xs.ref,
@@ -130,7 +116,7 @@ val builderCatalog: List<PaletteEntry> = listOf(
         template = SduiNode(type = "column"),
         fields = listOf(
             fillMaxWidthField(),
-            alignmentField(alignHorizontalOptions),
+            alignmentField(alignHorizontalRefs),
             paddingField(),
         ),
     ),
@@ -142,7 +128,7 @@ val builderCatalog: List<PaletteEntry> = listOf(
         template = SduiNode(type = "row"),
         fields = listOf(
             fillMaxWidthField(),
-            alignmentField(alignVerticalOptions),
+            alignmentField(alignVerticalRefs),
             paddingField(),
         ),
     ),

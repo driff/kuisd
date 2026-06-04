@@ -23,19 +23,29 @@ import androidx.compose.ui.unit.dp
 import dev.kuisd.builder.catalog.FieldEditor
 import dev.kuisd.builder.catalog.FieldSpec
 import dev.kuisd.builder.catalog.FieldTarget
+import dev.kuisd.builder.catalog.KEY_ALIGNMENT
+import dev.kuisd.builder.catalog.alignHorizontalRefs
+import dev.kuisd.builder.catalog.alignVerticalRefs
 import dev.kuisd.builder.catalog.catalogByType
 import dev.kuisd.builder.catalog.modifierEnumValue
+import dev.kuisd.builder.catalog.modifierWeight
 import dev.kuisd.builder.catalog.optionLabel
 import dev.kuisd.builder.catalog.withModifierEnum
+import dev.kuisd.builder.catalog.withModifierWeight
 import dev.kuisd.sdui.core.SduiNode
 import dev.kuisd.sdui.core.UiModifier
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 
-/** Inspector: edita props/UiModifier del nodo seleccionado según el descriptor de su `type`. */
+/**
+ * Inspector: edita props/UiModifier del nodo seleccionado según el descriptor de su `type`, más una
+ * sección contextual de "Layout en el contenedor" (alignment por-hijo + weight) cuando el nodo es hijo de
+ * un `column`/`row` (spec 019); [parentType] es el `type` del contenedor padre (null si no aplica).
+ */
 @Composable
 internal fun InspectorPane(
     node: SduiNode?,
+    parentType: String?,
     onProps: (JsonObject) -> Unit,
     onModifier: (UiModifier) -> Unit,
     modifier: Modifier = Modifier,
@@ -46,15 +56,59 @@ internal fun InspectorPane(
             return@Column
         }
         Text("Inspector · ${node.type}", style = MaterialTheme.typography.titleSmall)
-        val entry = catalogByType[node.type]
-        if (entry == null || entry.fields.isEmpty()) {
+        val fields = catalogByType[node.type]?.fields.orEmpty()
+        if (fields.isEmpty()) {
             Text("Sin campos editables", style = MaterialTheme.typography.bodySmall)
-            return@Column
+        } else {
+            fields.forEach { field -> FieldRow(node, field, onProps, onModifier) }
         }
-        entry.fields.forEach { field ->
-            FieldRow(node, field, onProps, onModifier)
-        }
+        LayoutSection(node, parentType, onProps, onModifier)
     }
+}
+
+/** Alignment por-hijo (eje del contenedor padre) + weight; solo si el nodo es hijo de column/row. */
+@Composable
+private fun LayoutSection(
+    node: SduiNode,
+    parentType: String?,
+    onProps: (JsonObject) -> Unit,
+    onModifier: (UiModifier) -> Unit,
+) {
+    val alignRefs = when (parentType) {
+        "column" -> alignHorizontalRefs
+        "row" -> alignVerticalRefs
+        else -> return
+    }
+    Text(
+        "Layout en el contenedor",
+        style = MaterialTheme.typography.titleSmall,
+        modifier = Modifier.padding(top = 8.dp),
+    )
+    val alignField = FieldSpec(
+        key = KEY_ALIGNMENT,
+        label = "Alineación",
+        editor = FieldEditor.Enum,
+        options = alignRefs,
+        target = FieldTarget.Modifier,
+    )
+    EnumField(node = node, field = alignField, onProps = onProps, onModifier = onModifier)
+    WeightField(node, onModifier)
+}
+
+@Composable
+private fun WeightField(node: SduiNode, onModifier: (UiModifier) -> Unit) {
+    // Estado de texto local (sembrado por nodo) para no reformatear mientras se escribe; empuja el Float parseado.
+    var text by remember(node.id) { mutableStateOf(modifierWeight(node.modifier)) }
+    OutlinedTextField(
+        value = text,
+        onValueChange = {
+            text = it
+            onModifier(withModifierWeight(node.modifier, it))
+        },
+        label = { Text("Weight") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp),
+    )
 }
 
 @Composable
