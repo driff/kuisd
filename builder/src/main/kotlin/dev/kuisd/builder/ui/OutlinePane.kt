@@ -30,7 +30,15 @@ internal fun OutlinePane(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.verticalScroll(rememberScrollState())) {
-        OutlineNode(root, depth = 0, selectedId = selectedId, onSelect = onSelect, onDelete = onDelete)
+        // La raíz (protegida de borrado) es la del árbol cargado: su id puede no ser el literal "root".
+        OutlineNode(
+            node = root,
+            depth = 0,
+            rootId = root.id,
+            selectedId = selectedId,
+            onSelect = onSelect,
+            onDelete = onDelete,
+        )
     }
 }
 
@@ -38,6 +46,7 @@ internal fun OutlinePane(
 private fun OutlineNode(
     node: SduiNode,
     depth: Int,
+    rootId: String?,
     selectedId: String?,
     onSelect: (String?) -> Unit,
     onDelete: (String) -> Unit,
@@ -58,13 +67,13 @@ private fun OutlineNode(
             style = MaterialTheme.typography.bodySmall,
         )
         val id = node.id
-        if (id != null && id != "root") {
+        if (id != null && id != rootId) {
             IconButton(onClick = { onDelete(id) }) {
                 Icon(Icons.Default.Delete, contentDescription = "Borrar")
             }
         }
     }
     node.children.forEach { child ->
-        OutlineNode(child, depth + 1, selectedId, onSelect, onDelete)
+        OutlineNode(child, depth + 1, rootId, selectedId, onSelect, onDelete)
     }
 }
