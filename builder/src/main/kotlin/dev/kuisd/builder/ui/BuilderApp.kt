@@ -3,52 +3,169 @@ package dev.kuisd.builder.ui
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.kuisd.app.SduiPreviewEnvironment
-import dev.kuisd.builder.export.exportEnvelope
+import dev.kuisd.builder.export.encodeToJson
+import dev.kuisd.builder.io.BuilderFileStore
 import dev.kuisd.builder.model.BuilderDocument
 import dev.kuisd.builder.model.TreeOps
 import dev.kuisd.sdui.RenderNode
+import java.io.File
 
 private const val PREVIEW_WEIGHT = 0.55f
 private const val PANEL_WEIGHT = 0.45f
 private val EXPORT_PANEL_MAX_HEIGHT = 220.dp
 
-/** App del builder: preview (izquierda) + paleta/outline/inspector/export (columna derecha). */
+/** App del builder: toolbar de archivo + preview (izquierda) + paleta/outline/inspector/export (derecha). */
 @Composable
 internal fun BuilderApp() {
     val document = remember { BuilderDocument() }
     val handler = remember { LoggingActionHandler() }
+    // Acción pendiente de confirmar (descarte de cambios) y mensaje de error de E/S, ambos efímeros.
+    var pendingAction: (() -> Unit)? by remember { mutableStateOf(null) }
+    var errorMessage: String? by remember { mutableStateOf(null) }
+
+    /** Ejecuta [action] directamente, o la aplaza tras confirmación si hay cambios sin guardar. */
+    fun guardDiscard(action: () -> Unit) {
+        if (document.isModified) pendingAction = action else action()
+    }
+
+    fun openFlow() {
+        val file = openFileDialog() ?: return // cancelar: no altera el documento (HU-2.6)
+        BuilderFileStore.read(file)
+            .onSuccess { document.load(it, file) }
+            .onFailure { errorMessage = ioErrorMessage("abrir", file, it) }
+    }
+
+    fun saveTo(chosen: File?) {
+        val file = chosen ?: return // cancelar (HU-1.6)
+        // write normaliza la extensión y devuelve el File realmente escrito → markSaved con esa ruta.
+        BuilderFileStore.write(file, document.toEnvelope())
+            .onSuccess { document.markSaved(it) }
+            .onFailure { errorMessage = ioErrorMessage("guardar", file, it) }
+    }
+
+    fun save() = saveTo(document.currentFile ?: saveFileDialog(suggestedName(document))) // HU-1.4
+
+    fun saveAs() = saveTo(saveFileDialog(suggestedName(document)))
+
     MaterialTheme {
         Surface {
-            Row(Modifier.fillMaxSize()) {
-                Box(Modifier.weight(PREVIEW_WEIGHT).fillMaxHeight().padding(12.dp)) {
-                    SduiPreviewEnvironment(handler) { RenderNode(document.root) }
+            Column(Modifier.fillMaxSize()) {
+                Toolbar(
+                    document = document,
+                    onNuevo = { guardDiscard(document::newDocument) },
+                    onAbrir = { guardDiscard(::openFlow) },
+                    onGuardar = ::save,
+                    onGuardarComo = ::saveAs,
+                )
+                HorizontalDivider()
+                Row(Modifier.fillMaxSize()) {
+                    Box(Modifier.weight(PREVIEW_WEIGHT).fillMaxHeight().padding(12.dp)) {
+                        SduiPreviewEnvironment(handler) { RenderNode(document.root) }
+                    }
+                    VerticalDivider()
+                    RightColumn(document, Modifier.weight(PANEL_WEIGHT).fillMaxHeight())
                 }
-                VerticalDivider()
-                RightColumn(document, Modifier.weight(PANEL_WEIGHT).fillMaxHeight())
             }
         }
     }
+
+    pendingAction?.let { action ->
+        ConfirmDiscardDialog(
+            onConfirm = {
+                pendingAction = null
+                action()
+            },
+            onDismiss = { pendingAction = null },
+        )
+    }
+    errorMessage?.let { message ->
+        ErrorDialog(message = message, onDismiss = { errorMessage = null })
+    }
+}
+
+/** Nombre propuesto al guardar: el del archivo actual o uno por defecto. */
+private fun suggestedName(document: BuilderDocument): String = document.currentFile?.name ?: "blueprint.json"
+
+/** Mensaje legible para un fallo de E/S al [action] («abrir»/«guardar») el archivo [file]. */
+private fun ioErrorMessage(action: String, file: File, cause: Throwable): String =
+    "No se pudo $action «${file.name}»: ${cause.message ?: cause::class.simpleName}"
+
+@Composable
+private fun Toolbar(
+    document: BuilderDocument,
+    onNuevo: () -> Unit,
+    onAbrir: () -> Unit,
+    onGuardar: () -> Unit,
+    onGuardarComo: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OutlinedButton(onClick = onNuevo) { Text("Nuevo") }
+        Spacer(Modifier.width(6.dp))
+        OutlinedButton(onClick = onAbrir) { Text("Abrir") }
+        Spacer(Modifier.width(6.dp))
+        Button(onClick = onGuardar) { Text("Guardar") }
+        Spacer(Modifier.width(6.dp))
+        OutlinedButton(onClick = onGuardarComo) { Text("Guardar como…") }
+        Spacer(Modifier.width(12.dp))
+        val name = document.currentFile?.name ?: "(sin guardar)"
+        val marker = if (document.isModified) " •" else ""
+        Text(
+            text = "$name$marker",
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun ConfirmDiscardDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Descartar cambios") },
+        text = { Text("Hay cambios sin guardar. ¿Descartarlos?") },
+        confirmButton = { TextButton(onClick = onConfirm) { Text("Descartar") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
+    )
+}
+
+@Composable
+private fun ErrorDialog(message: String, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Error") },
+        text = { Text(message) },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Aceptar") } },
+    )
 }
 
 @Composable
@@ -76,7 +193,10 @@ private fun RightColumn(document: BuilderDocument, modifier: Modifier) {
             modifier = Modifier.weight(1f).fillMaxWidth(),
         )
         HorizontalDivider()
-        Button(onClick = { exported = exportEnvelope(document.root) }, modifier = Modifier.padding(8.dp)) {
+        Button(
+            onClick = { exported = document.toEnvelope().encodeToJson() },
+            modifier = Modifier.padding(8.dp),
+        ) {
             Text("Exportar JSON")
         }
         exported?.let { json ->
