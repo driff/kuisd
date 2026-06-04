@@ -49,6 +49,9 @@ private val typeStyleOptions: List<String> = listOf(
 /** Opciones de `contentScale` del componente `image`. */
 private val contentScaleOptions: List<String> = listOf("crop", "fit", "fillBounds", "inside", "none")
 
+/** Opciones de `contentDirection` del componente `scaffold`. */
+private val contentDirectionOptions: List<String> = listOf("column", "row")
+
 /**
  * Catálogo curado: subconjunto de `CorePack` con plantillas válidas (decodificables) y campos
  * editables por el inspector. Hecho a mano para controlar editores, opciones y plantillas.
@@ -151,7 +154,14 @@ val builderCatalog: List<PaletteEntry> = listOf(
         label = "Scaffold",
         acceptsChildren = true,
         template = SduiNode(type = "scaffold"),
-        fields = emptyList(),
+        fields = listOf(
+            FieldSpec(
+                key = "contentDirection",
+                label = "Dirección del contenido",
+                editor = FieldEditor.Enum,
+                options = contentDirectionOptions,
+            ),
+        ),
     ),
     PaletteEntry(
         type = "topAppBar",
@@ -161,6 +171,16 @@ val builderCatalog: List<PaletteEntry> = listOf(
         template = SduiNode(type = "topAppBar", props = props("title" to "Título")),
         fields = listOf(
             FieldSpec(key = "title", label = "Título", editor = FieldEditor.Text),
+        ),
+    ),
+    PaletteEntry(
+        type = "bottomBar",
+        category = Category.Estructura,
+        label = "Barra inferior",
+        acceptsChildren = true,
+        template = SduiNode(type = "bottomBar"),
+        fields = listOf(
+            FieldSpec(key = "selectedBind", label = "Bind selección", editor = FieldEditor.Text),
         ),
     ),
     // Media
