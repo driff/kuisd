@@ -4,7 +4,7 @@
 
 Cada tarea es atómica y verificable. Marca `[x]` solo cuando su verificación pasa.
 
-- [ ] **T1** — Andamiaje del módulo + exposición en `:shared`. Crear `:builder` (Compose Desktop,
+- [x] **T1** — Andamiaje del módulo + exposición en `:shared`. Crear `:builder` (Compose Desktop,
   molde `:desktopApp`: plugins, `compose.desktop application{}`, javaHome lazy), `include(":builder")` en
   settings, `Main.kt` mínimo (`Window { Text("builder") }`). En `:shared`, `SduiPreviewEnvironment.kt`
   público (provee los seams con `SduiActionHandler` inyectable).
